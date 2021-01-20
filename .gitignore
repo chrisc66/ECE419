@@ -1,12 +1,17 @@
 # IDE configurations
 
+.vscode/
 .idea/
+milestone*/.vscode/
+milestone*/.idea/
 
 # build files
 
-milestone1/bin/*
-milestone2/bin/*
-milestone3/bin/*
-milestone4/bin/*
-*.MF
-*.jar
+*.iml
+milestone*/bin/*
+milestone*/lib/&
+milestone*/out/*
+milestone*/logs/*
+milestone*/*.MF
+milestone*/*.jar
+
