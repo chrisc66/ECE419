@@ -1,0 +1,12 @@
+# IDE configurations
+
+.idea/
+
+# build files
+
+milestone1/bin/*
+milestone2/bin/*
+milestone3/bin/*
+milestone4/bin/*
+*.MF
+*.jar
