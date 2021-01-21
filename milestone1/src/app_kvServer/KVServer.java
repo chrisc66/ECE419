@@ -1,6 +1,6 @@
 package app_kvServer;
 
-import shared.communication.KVCommunication;
+import shared.communication.KVCommunicationServer;
 import logger.LogSetup;
 
 import java.util.ArrayList;
@@ -114,36 +114,37 @@ public class KVServer implements IKVServer {
 
 	@Override
     public void run(){
+		
 		logger.info("Initialize server ...");
-//		try {
-//			serverSocket = new ServerSocket(port);
-//			logger.info("Server listening on port: " + serverSocket.getLocalPort());
-//			running = true;
-//		}
-//		catch (IOException e) {
-//			logger.error("Error! Cannot open server socket. \n", e);
-//			if (e instanceof BindException){
-//             	logger.error("Port " + port + " is already bound! \n");
-//            }
-//			running = false;
-//        }
-//
-//        if (serverSocket != null) {
-//	        while (running){
-//	            try {
-//					Socket client = serverSocket.accept();
-//					KVCommunication communicator = new KVCommunication(client, this);
-//	                Thread clientThread = new Thread(communicator);
-//	                clientThread.start();
-//	                clientThreads.add(clientThread);
-//					logger.info("Connected to " + client.getInetAddress().getHostName() +
-//							" on port " + client.getPort());
-//				}
-//				catch (IOException e) {
-//					logger.error("Error! Unable to establish connection. \n", e);
-//	            }
-//	        }
-//        }
+		try {
+			serverSocket = new ServerSocket(port);
+			logger.info("Server listening on port: " + serverSocket.getLocalPort());    
+			running = true;
+		}
+		catch (IOException e) {
+			logger.error("Error! Cannot open server socket. \n", e);
+			if (e instanceof BindException){
+             	logger.error("Port " + port + " is already bound! \n");
+            }
+			running = false;
+        }
+        
+        if (serverSocket != null) {
+	        while (running){
+	            try {
+					Socket clientSocket = serverSocket.accept();
+					KVCommunicationServer communication = new KVCommunicationServer(clientSocket, this);
+	                Thread clientThread = new Thread(communication);
+	                clientThread.start();
+	                clientThreads.add(clientThread);              
+					logger.info("Connected to " + clientSocket.getInetAddress().getHostName() +  
+							" on port " + clientSocket.getPort());
+				} 
+				catch (IOException e) {
+					logger.error("Error! Unable to establish connection. \n", e);
+	            }
+	        }
+        }
         logger.info("Server stopped.");
 	}
 
@@ -154,7 +155,8 @@ public class KVServer implements IKVServer {
 		running = false;
 		try {
 			serverSocket.close();
-		} catch (IOException e) {
+		} 
+		catch (IOException e) {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
@@ -169,8 +171,28 @@ public class KVServer implements IKVServer {
                 clientThreads.get(i).interrupt();
             }
 			serverSocket.close();
-		} catch (IOException e) {
+		} 
+		catch (IOException e) {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
+	public static void main(String[] args) throws IOException {
+    	try {
+    		new LogSetup("logs/server.log", Level.ALL);
+			if(args.length != 3) {
+				logger.error("Error! Invalid number of arguments!");
+				logger.error("Usage: Server <port> <cacheSize> <strategy>!");
+			} else {
+				int port = Integer.parseInt(args[0]);
+				int cacheSize = Integer.parseInt(args[1]);
+				String strategy = args[2];
+				new KVServer(port, cacheSize, strategy).run();
+			}
+		} catch (IOException e) {
+			logger.error("Error! Unable to initialize logger!");
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
 }

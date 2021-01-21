@@ -4,6 +4,7 @@ import client.KVCommInterface;
 import client.KVStore;
 import logger.LogSetup;
 
+
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -79,7 +80,7 @@ public class KVClient implements IKVClient {
                 printError("Invalid number of parameters!");
             }
 
-        } else  if (tokens[0].equals("put")) {
+        } else if (tokens[0].equals("put")) {
             if(tokens.length >= 2) {
                 if(kvStore != null && kvStore.isRunning()){
                     StringBuilder value = new StringBuilder();
@@ -100,7 +101,20 @@ public class KVClient implements IKVClient {
             } else {
                 printError("No message passed!");
             }
-
+        } else if (tokens[0].equals("get")) {
+            if(tokens.length >= 1) {
+                if(kvStore != null && kvStore.isRunning()){
+                    String key = tokens[1];
+                    //!!!!! need to check key value size
+                    // byte[] utf16Bytes= string.getBytes("UTF-16BE");
+                    // size = System.out.println(utf16Bytes.length);
+                    kvStore.get(key);
+                } else {
+                    printError("Not connected!");
+                }
+            } else {
+                printError("No message passed!");
+            }
         } else if(tokens[0].equals("disconnect")) {
             kvStore.disconnect();
 
@@ -168,7 +182,7 @@ public class KVClient implements IKVClient {
 
     public static void main(String[] args) throws Exception{
         try {
-//            new LogSetup("logs/client.log", Level.OFF);
+            new LogSetup("logs/client.log", Level.ALL);
             KVClient app = new KVClient();
             app.run();
         } catch (IOException e) {
