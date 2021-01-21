@@ -38,7 +38,7 @@ public interface KVCommInterface {
 	 *            the key that identifies the value.
 	 * @return the value, which is indexed by the given key.
 	 * @throws Exception
-	 *             if put command cannot be executed (e.g. not connected to any
+	 *             if get command cannot be executed (e.g. not connected to any
 	 *             KV server).
 	 */
 	public KVMessage get(String key) throws Exception;
