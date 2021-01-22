@@ -34,9 +34,13 @@ public class KVStore implements KVCommInterface {
 	public void connect() throws Exception {
 		// TODO Auto-generated method stub
 //		clientSocket = new Socket(serverAddress, serverPort);
-		output = clientSocket.getOutputStream();
-		input = clientSocket.getInputStream();
-		System.out.println("Create socket successfully, connection is established!\n , output stream = " + output );
+		try {
+			output = clientSocket.getOutputStream();
+			input = clientSocket.getInputStream();
+			System.out.println("Connection is established!\n , output stream = " + output);
+		} catch (Exception e) {
+			System.out.println("Connection Fails!");
+		}
 	}
 
 	@Override
