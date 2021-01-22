@@ -115,35 +115,35 @@ public class KVServer implements IKVServer {
 	@Override
     public void run(){
 		logger.info("Initialize server ...");
-		try {
-			serverSocket = new ServerSocket(port);
-			logger.info("Server listening on port: " + serverSocket.getLocalPort());    
-			running = true;
-		}
-		catch (IOException e) {
-			logger.error("Error! Cannot open server socket. \n", e);
-			if (e instanceof BindException){
-             	logger.error("Port " + port + " is already bound! \n");
-            }
-			running = false;
-        }
-        
-        if (serverSocket != null) {
-	        while (running){
-	            try {
-					Socket client = serverSocket.accept();
-					KVCommunication communicator = new KVCommunication(client, this);
-	                Thread clientThread = new Thread(communicator);
-	                clientThread.start();
-	                clientThreads.add(clientThread);              
-					logger.info("Connected to " + client.getInetAddress().getHostName() +  
-							" on port " + client.getPort());
-				} 
-				catch (IOException e) {
-					logger.error("Error! Unable to establish connection. \n", e);
-	            }
-	        }
-        }
+//		try {
+//			serverSocket = new ServerSocket(port);
+//			logger.info("Server listening on port: " + serverSocket.getLocalPort());
+//			running = true;
+//		}
+//		catch (IOException e) {
+//			logger.error("Error! Cannot open server socket. \n", e);
+//			if (e instanceof BindException){
+//             	logger.error("Port " + port + " is already bound! \n");
+//            }
+//			running = false;
+//        }
+//
+//        if (serverSocket != null) {
+//	        while (running){
+//	            try {
+//					Socket client = serverSocket.accept();
+//					KVCommunication communicator = new KVCommunication(client, this);
+//	                Thread clientThread = new Thread(communicator);
+//	                clientThread.start();
+//	                clientThreads.add(clientThread);
+//					logger.info("Connected to " + client.getInetAddress().getHostName() +
+//							" on port " + client.getPort());
+//				}
+//				catch (IOException e) {
+//					logger.error("Error! Unable to establish connection. \n", e);
+//	            }
+//	        }
+//        }
         logger.info("Server stopped.");
 	}
 
