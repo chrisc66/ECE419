@@ -50,9 +50,6 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     }
 
     public void send(KVMessage message) throws IOException {
-        
-        System.out.println("KVCommunicationServer send() entering ...");
-        
         byte[] messageBytes = message.getMessageBytes();
 		output.write(messageBytes, 0, messageBytes.length);
 		output.flush();
@@ -60,14 +57,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 				+ clientSocket.getInetAddress().getHostAddress() + ":" 
 				+ clientSocket.getPort() + ">: '" 
                 + message.getMessage() +"'");
-        
-        System.out.println("KVCommunicationServer send() leaving ...");
     }
 
     public KVMessage receive() throws IOException, Exception {
-        
-        System.out.println("KVCommunicationServer receive() entering ...");
-        
+
         int index = 0;
         byte[] msgBytes = null;
         byte[] tmp = null;
@@ -80,15 +73,16 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 
         while (reading) {
 
-            System.out.println("KVCommunicationServer receive() reading ...");
-
             if (read == 10){
                 numDeliminator ++;
             }
-            if (numDeliminator == 3 || read == -1){
+            if (numDeliminator == 3){
                 break;
             }
-            
+            if (read == -1){
+                return new KVMessageClass(StatusType.DISCONNECT, "", "");
+            }
+
             /* if buffer filled, copy to msg array */
 			if(index == BUFFER_SIZE) {
 				if (msgBytes == null){
@@ -115,12 +109,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 			if(msgBytes != null && msgBytes.length + index >= MAX_BUFF_SIZE) {
 				reading = false;
 			}
-			
+
 			/* read next char from stream */
 			read = (byte) input.read();
 		}
-        
-        System.out.println("KVCommunicationServer receive() line 122");
 
         if (msgBytes == null){
 			tmp = new byte[index];
@@ -130,19 +122,16 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 			tmp = new byte[msgBytes.length + index];
 			System.arraycopy(msgBytes, 0, tmp, 0, msgBytes.length);
 			System.arraycopy(bufferBytes, 0, tmp, msgBytes.length, index);
-		}
-		
-		msgBytes = tmp;
+        }
+        
+        msgBytes = tmp;
         
 		/* build final String */
         KVMessage msg = new KVMessageClass(msgBytes);
-        System.out.println("KVCommunicationServer receive() line 147");
 		logger.info("RECEIVE \t<" 
 				+ clientSocket.getInetAddress().getHostAddress() + ":" 
 				+ clientSocket.getPort() + ">: '" 
 				+ msg.getMessage().trim() + "'");
-        
-        System.out.println("KVCommunicationServer receive() leaving ...");
         
         return msg;
     }
@@ -175,11 +164,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
      * @throws Exception Illegal message content lenth.
      */
     public KVMessage process(KVMessage message) throws IllegalStateException, Exception {
-        
-        System.out.println("KVCommunicationServer process() entering ...");
 
         StatusType sendMsgType = StatusType.UNDEFINED;
-        String sendMsgKey = "";
+        String sendMsgKey = message.getKey();   // return the same key as received message
         String sendMsgValue = "";
 
         switch(message.getStatus()){
@@ -192,65 +179,83 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 }
                 catch (Exception e) {
                     sendMsgType = StatusType.GET_ERROR;
-                    logger.info("GET ERROR: Value not found on server, key: " + message.getKey(), e);
+                    logger.info("GET ERROR: Value not found on server, key: " + message.getKey());
                 }
                 break;
             case PUT: 
-                // Identify status type and store key-value pair on the server
-                try {
-                    try {
-                        kvServer.getKV(message.getKey());
-                        if (message.getValue() != null)
-                            sendMsgType = StatusType.PUT_UPDATE;
-                        else 
-                            sendMsgType = StatusType.DELETE_SUCCESS;
-                        logger.info("PUT UPDATE: Value is updated on server, key: " + message.getKey());
-                    } 
-                    catch (Exception e) {   // getValue() exception when value not found
-                        if (message.getValue() != null)
-                            sendMsgType = StatusType.PUT_SUCCESS;
-                        else
-                            sendMsgType = StatusType.DELETE_SUCCESS;
-                        logger.info("PUT SUCCESS: Value is stored on server, key: " + message.getKey());
-                    }
-                    kvServer.putKV(message.getKey(), message.getValue());
+                System.out.println("############# Key - Value #############");
+                System.out.println(message.getKey());
+                System.out.println(message.getValue());
+                if (message.getValue().equals("")){
+                    System.out.println("Value " + message.getValue() + "is empty string");
                 }
-                catch (Exception e) {
-                    if (message.getValue() != null)
+                System.out.println("#######################################");
+                // Identify status type and store key-value pair on the server
+                if (!message.getValue().equals("")){    // PUT
+                    // check if key-value pair is already stored
+                    try {
+                        sendMsgValue = kvServer.getKV(message.getKey());
+                        sendMsgType = StatusType.PUT_UPDATE;
+                    }
+                    catch (Exception e){
+                        sendMsgType = StatusType.PUT_SUCCESS;
+                    }
+                    // store / update key-value pair
+                    try {
+                        kvServer.putKV(message.getKey(), message.getValue());
+                    }
+                    catch (Exception e) {
                         sendMsgType = StatusType.PUT_ERROR;
-                    else
+                    }
+                    // set logger message
+                    if (sendMsgType == StatusType.PUT_SUCCESS){
+                        logger.info("PUT_SUCCESS: Value is stored on server, key: " + message.getKey() + ", value: " + message.getValue());
+                    }
+                    else if (sendMsgType == StatusType.PUT_UPDATE){
+                        logger.info("PUT_UPDATE: Value is updated on server, key: " + message.getKey() + ", value: " + message.getValue());
+                    }
+                    else{
+                        logger.info("PUT_ERROR: Value cannot be stored on server, key: " + message.getKey() + ", value: " + message.getValue());
+                    }
+                }
+                else {  // DELETE
+                    try {
+                        boolean ret = kvServer.deleteKV(message.getKey());
+                        if (ret){
+                            sendMsgType = StatusType.DELETE_SUCCESS;
+                            logger.info("DELETE_SUCCESS: Value is deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
+                        }
+                        else {
+                            sendMsgType = StatusType.DELETE_ERROR;
+                            logger.info("DELETE_ERROR: Value cannot be deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
+                        }
+                    }
+                    catch (Exception e) {
                         sendMsgType = StatusType.DELETE_ERROR;
-                    ////TODO: if falls into this exception, logger will be printed twice
-                    logger.info("PUT ERROR: Value cannot be stored on server, key: " + message.getKey(), e);
+                        logger.info("DELETE_ERROR: Value cannot be deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
+                    }
                 }
                 break;
             case DISCONNECT:
-                sendMsgType = StatusType.DISCONNECT;
                 open = false;
+                sendMsgType = StatusType.DISCONNECT;
+                logger.info("PUT_SUCCESS: Value is stored on server");
                 break;
             default:
                 // Server only handles GET and PUT, not handling other message types
                 throw new IllegalStateException("Received an unsupported messaage. Server only handles 'GET' and 'PUT' KVMessages.");
         }
 
-        KVMessage sendMsg = new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
-
-        System.out.println("KVCommunicationServer process() entering ...");
-
-        return sendMsg;
+        return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
     }
 
     public void run(){
         // KVCommunicationServer process runs in this loop
         while (open) {
-            System.out.println("KVCommunicationServer run() starting ...");
             try {
                 KVMessage recvMsg = receive();          // listening / waiting on receive()
-                System.out.println("KVCommunicationServer run() line 214");
                 KVMessage sendMsg = process(recvMsg);
-                System.out.println("KVCommunicationServer run() line 216");
                 send(sendMsg);
-                System.out.println("KVCommunicationServer run() line 218");
             }
             catch (IOException e) {
                 logger.error("Server lost client lost! ", e);
@@ -259,9 +264,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
             catch (Exception e) {
                 logger.error(e);
             }
-            System.out.println("KVCommunicationServer run() finishing ...");
         }
-
 
         // before finish running, close connection
         if (clientSocket != null) {

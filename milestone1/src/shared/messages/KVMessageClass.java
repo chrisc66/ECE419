@@ -30,40 +30,23 @@ public class KVMessageClass implements KVMessage, Serializable {
      * @param msgBytes Message content in byte array format.
      */
     public KVMessageClass(byte[] msgBytes) throws Exception {
-        
-        System.out.println("KVMessageClass constructor 1 entering ...");
 
         this.messageBytes = new byte[msgBytes.length];
         System.arraycopy(msgBytes, 0, messageBytes, 0, msgBytes.length);
-
-        System.out.println("KVMessageClass constructor 1 line 44");
-
-        this.messageString = new String(msgBytes, StandardCharsets.UTF_8);
         
+        this.messageString = new String(msgBytes, StandardCharsets.UTF_8);
         String[] elements = messageString.split(DELIMITOR, 3); 
         this.statusTypeString = elements[0];
         this.key = elements[1];
         this.value = elements[2];
-
-        System.out.println("KVMessageClass constructor 1 line 44");
         
         if (key.getBytes(StandardCharsets.UTF_8).length > MAX_KEY_SIZE){
             throw new Exception("Key exceed maximum allowed size of " + MAX_KEY_SIZE + "bytes.");
         }
-        
-        System.out.println("KVMessageClass constructor 1 line 50");
-
         if (messageBytes.length > MAX_BUFF_SIZE){
             throw new Exception("Message exceed maximum allowed size of " + MAX_BUFF_SIZE + "bytes.");
         }
 
-        System.out.println("KVMessageClass constructor 1 line 56");
-
-        String string = new String(messageBytes, StandardCharsets.UTF_8);
-        System.out.println(string);
-        System.out.println(messageString);
-
-        System.out.println("KVMessageClass constructor 1 leaving ...");
     }
 
     /**
@@ -72,8 +55,6 @@ public class KVMessageClass implements KVMessage, Serializable {
      * @param msgString Message content in string format.
      */
     public KVMessageClass(String msgString) throws Exception {
-        
-        System.out.println("KVMessageClass constructor 2");
 
         this.messageString = msgString;
         this.messageBytes = msgString.getBytes(StandardCharsets.UTF_8);
@@ -86,14 +67,9 @@ public class KVMessageClass implements KVMessage, Serializable {
         if (key.getBytes(StandardCharsets.UTF_8).length > MAX_KEY_SIZE){
             throw new Exception("Key exceed maximum allowed size of " + MAX_KEY_SIZE + "bytes.");
         }
-        
         if (messageBytes.length > MAX_BUFF_SIZE){
             throw new Exception("Message exceed maximum allowed size of " + MAX_BUFF_SIZE + "bytes.");
         }
-
-        String string = new String(messageBytes, StandardCharsets.UTF_8);
-        System.out.println(string);
-        System.out.println(messageString);
 
     }
 
@@ -105,9 +81,7 @@ public class KVMessageClass implements KVMessage, Serializable {
      * @param value third element, value string.
      */
     public KVMessageClass(StatusType statusType, String key, String value) throws Exception {
-        
-        System.out.println("KVMessageClass constructor 3");
-        
+
         this.statusTypeString = getStatusString(statusType);        // 1st element
         this.key = key;                                             // 2nd element
         this.value = value;                                         // 3rd element
@@ -122,10 +96,6 @@ public class KVMessageClass implements KVMessage, Serializable {
             throw new Exception("Message exceed maximum allowed size of " + MAX_BUFF_SIZE + "bytes.");
         }
 
-        String string = new String(messageBytes, StandardCharsets.UTF_8);
-        System.out.println(string);
-        System.out.println(messageString);
-
     }
 
     /**
@@ -137,8 +107,6 @@ public class KVMessageClass implements KVMessage, Serializable {
      */
     public KVMessageClass(String statusTypeString, String key, String value) throws Exception {
         
-        System.out.println("KVMessageClass constructor 4");
-
         this.statusTypeString = statusTypeString;                   // 1st element
         this.key = key;                                             // 2nd element
         this.value = value;                                         // 3rd element
@@ -149,14 +117,9 @@ public class KVMessageClass implements KVMessage, Serializable {
         if (key.getBytes(StandardCharsets.UTF_8).length > MAX_KEY_SIZE){
             throw new Exception("Key exceed maximum allowed size of " + MAX_KEY_SIZE + "bytes.");
         }
-        
         if (messageBytes.length > MAX_BUFF_SIZE){
             throw new Exception("Message exceed maximum allowed size of " + MAX_BUFF_SIZE + "bytes.");
         }
-
-        String string = new String(messageBytes, StandardCharsets.UTF_8);
-        System.out.println(string);
-        System.out.println(messageString);
 
     }
 
@@ -237,13 +200,5 @@ public class KVMessageClass implements KVMessage, Serializable {
     public String getMessage(){
         return Arrays.toString(messageBytes);
     }
-
-    // public Byte[] stringToBytes (String str){
-        
-    // }
-
-    // public String bytesToString (Byte[] bytes){
-        
-    // }
 
 }

@@ -55,6 +55,14 @@ public interface IKVServer {
     public String getKV(String key) throws Exception;
 
     /**
+     * Delete the value associated with the key
+     * @return  if the delete operation is successful or not
+     * @throws Exception
+     *      when key not in the key range of the server
+     */
+    public boolean deleteKV(String key) throws Exception;
+
+    /**
      * Put the key-value pair into storage
      * @throws Exception
      *      when key not in the key range of the server
