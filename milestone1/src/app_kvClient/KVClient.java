@@ -2,22 +2,24 @@ package app_kvClient;
 
 import client.KVCommInterface;
 import client.KVStore;
+import logger.LogSetup;
+
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 
-import logger.LogSetup;
-
 public class KVClient implements IKVClient {
 
-    private KVStore kvStore = null;
+    private static final String PROMPT = "Client> ";
+    private static Logger logger = Logger.getRootLogger();
 
+    private KVStore kvStore = null;
     private boolean stop = false;
     private BufferedReader stdin;
-    private static final String PROMPT = "Client> ";
     private String serverAddress;
     private int serverPort;
 
@@ -103,19 +105,18 @@ public class KVClient implements IKVClient {
             kvStore.disconnect();
 
         } else if(tokens[0].equals("logLevel")) {
-            // need to implement logger
-//            if(tokens.length == 2) {
-//                String level = setLevel(tokens[1]);
-//                if(level.equals(LogSetup.UNKNOWN_LEVEL)) {
-//                    printError("No valid log level!");
-//                    printPossibleLogLevels();
-//                } else {
-//                    System.out.println(PROMPT +
-//                            "Log level changed to level " + level);
-//                }
-//            } else {
-//                printError("Invalid number of parameters!");
-//            }
+            if(tokens.length == 2) {
+                String level = setLevel(tokens[1]);
+                if(level.equals(LogSetup.UNKNOWN_LEVEL)) {
+                    printError("No valid log level!");
+                    printPossibleLogLevels();
+                } else {
+                    System.out.println(PROMPT +
+                            "Log level changed to level " + level);
+                }
+            } else {
+                printError("Invalid number of parameters!");
+            }
 
         } else if(tokens[0].equals("help")) {
             //!!!!!! may need to implement printHelp()
@@ -128,6 +129,41 @@ public class KVClient implements IKVClient {
 
     private void printError(String error){
         System.out.println(PROMPT + "Error! " +  error);
+    }
+
+    private void printPossibleLogLevels() {
+        System.out.println(PROMPT
+                + "Possible log levels are:");
+        System.out.println(PROMPT
+                + "ALL | DEBUG | INFO | WARN | ERROR | FATAL | OFF");
+    }
+
+    private String setLevel(String levelString) {
+
+        if(levelString.equals(Level.ALL.toString())) {
+            logger.setLevel(Level.ALL);
+            return Level.ALL.toString();
+        } else if(levelString.equals(Level.DEBUG.toString())) {
+            logger.setLevel(Level.DEBUG);
+            return Level.DEBUG.toString();
+        } else if(levelString.equals(Level.INFO.toString())) {
+            logger.setLevel(Level.INFO);
+            return Level.INFO.toString();
+        } else if(levelString.equals(Level.WARN.toString())) {
+            logger.setLevel(Level.WARN);
+            return Level.WARN.toString();
+        } else if(levelString.equals(Level.ERROR.toString())) {
+            logger.setLevel(Level.ERROR);
+            return Level.ERROR.toString();
+        } else if(levelString.equals(Level.FATAL.toString())) {
+            logger.setLevel(Level.FATAL);
+            return Level.FATAL.toString();
+        } else if(levelString.equals(Level.OFF.toString())) {
+            logger.setLevel(Level.OFF);
+            return Level.OFF.toString();
+        } else {
+            return LogSetup.UNKNOWN_LEVEL;
+        }
     }
 
     public static void main(String[] args) throws Exception{
