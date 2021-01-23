@@ -3,7 +3,9 @@ package shared.communication;
 import app_kvServer.KVServer;
 import shared.messages.KVMessage;
 import shared.messages.KVMessageClass;
+import shared.messages.KVMessage.StatusType;
 
+import java.nio.charset.StandardCharsets;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
@@ -47,9 +49,6 @@ public class KVCommunicationClient implements IKVCommunication {
     }
 
     public void send(KVMessage message) throws IOException {
-
-        System.out.println("KVCommunicationClient send() entering ...");
-
         byte[] messageBytes = message.getMessageBytes();
 		output.write(messageBytes, 0, messageBytes.length);
 		output.flush();
@@ -57,15 +56,10 @@ public class KVCommunicationClient implements IKVCommunication {
 				+ clientSocket.getInetAddress().getHostAddress() + ":" 
 				+ clientSocket.getPort() + ">: '" 
                 + message.getMessage() +"'");
-
-        System.out.println("KVCommunicationClient send() leaving ...");
-
     }
 
     public KVMessage receive() throws IOException, Exception {
 
-        System.out.println("KVCommunicationClient receive() entering ...");
-        
         int index = 0;
         byte[] msgBytes = null;
         byte[] tmp = null;
@@ -78,13 +72,14 @@ public class KVCommunicationClient implements IKVCommunication {
 
         while (reading) {
 
-            System.out.println("KVCommunicationServer receive() reading ...");
-
             if (read == 10){
                 numDeliminator ++;
             }
-            if (numDeliminator == 3 || read == -1){
+            if (numDeliminator == 3){
                 break;
+            }
+            if (read == -1){
+                return new KVMessageClass(StatusType.DISCONNECT, "", "");
             }
             
             /* if buffer filled, copy to msg array */
@@ -136,8 +131,6 @@ public class KVCommunicationClient implements IKVCommunication {
 				+ clientSocket.getInetAddress().getHostAddress() + ":" 
 				+ clientSocket.getPort() + ">: '" 
 				+ msg.getMessage().trim() + "'");
-        
-        System.out.println("KVCommunicationClient receive() leaving ...");
 
         return msg;
     }

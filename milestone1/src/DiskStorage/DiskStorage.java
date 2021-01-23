@@ -148,6 +148,7 @@ public class DiskStorage implements DiskStorageInterface{
                 logger.info("Cannot remove non-exisitng KV pairs");
                 return false;
             }
+            storeMapDataIntoFile();
             return true;
         }catch (Exception e){
             logger.error("Error trying to remove entry of key: "+key);
