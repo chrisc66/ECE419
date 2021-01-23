@@ -8,10 +8,14 @@ milestone*/.idea/
 # build files
 
 *.iml
+*.MF
+*.jar
+*.log
+
 milestone*/bin/*
-milestone*/lib/&
 milestone*/out/*
 milestone*/logs/*
+milestone*/*.iml
 milestone*/*.MF
 milestone*/*.jar
 
