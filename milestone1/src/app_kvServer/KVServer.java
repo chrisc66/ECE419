@@ -1,6 +1,35 @@
 package app_kvServer;
 
+import shared.communication.KVCommunicationServer;
+import logger.LogSetup;
+import DiskStorage.DiskStorage;
+
+import java.util.ArrayList;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.UnknownHostException;
+import java.net.BindException;
+import java.net.Socket;
+import java.io.IOException;
+import java.io.File;
+
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
 public class KVServer implements IKVServer {
+	
+	private static final String dir = "./data";
+	private static final String fileName = "persistanceDB.properties";
+	private static Logger logger = Logger.getRootLogger();
+
+	private ServerSocket serverSocket;
+	private int port;
+	private int cacheSize;
+	private String strategy;
+	private boolean running;
+	private ArrayList<Thread> clientThreads;
+	private DiskStorage diskStorage;
+
 	/**
 	 * Start KV Server at given port
 	 * @param port given port for storage server to operate
@@ -12,78 +41,188 @@ public class KVServer implements IKVServer {
 	 *           and "LFU".
 	 */
 	public KVServer(int port, int cacheSize, String strategy) {
-		// TODO Auto-generated method stub
+		this.serverSocket = null;
+		this.port = port;
+		this.cacheSize = cacheSize;
+		this.clientThreads = new ArrayList<Thread>();
+		if (storageFileExist()){
+			this.diskStorage = new DiskStorage(fileName);
+		}
+		else{
+			this.diskStorage = new DiskStorage();
+		}
 	}
 	
+	private boolean storageFileExist(){
+		
+		File dirFIle = new File(dir);
+        if (!dirFIle.exists()){
+            return false;
+        }
+        else {
+            File dummyFile = new File(dir+'/'+fileName);
+            return dummyFile.exists();
+        }
+    }
+
 	@Override
 	public int getPort(){
-		// TODO Auto-generated method stub
-		return -1;
+		return this.port;
 	}
 
 	@Override
     public String getHostname(){
-		// TODO Auto-generated method stub
-		return null;
+		String hostname = "";
+		try {
+			hostname = InetAddress.getLocalHost().getHostName();
+		} 
+		catch (UnknownHostException e) {
+			logger.error("The IP address of server host cannot be resolved. \n", e);
+		}
+		return hostname;
 	}
 
 	@Override
     public CacheStrategy getCacheStrategy(){
-		// TODO Auto-generated method stub
-		return IKVServer.CacheStrategy.None;
+		switch(this.strategy){
+			case "None":
+				return IKVServer.CacheStrategy.None;
+			case "LRU":
+				return IKVServer.CacheStrategy.LRU;
+			case "LFU":
+				return IKVServer.CacheStrategy.LFU;
+			case "FIFO":
+				return IKVServer.CacheStrategy.FIFO;
+			default:
+				logger.error("Undefined use of IKVServer.CacheStrategy, setting to None.");
+				return IKVServer.CacheStrategy.None;	
+		}
 	}
 
 	@Override
     public int getCacheSize(){
-		// TODO Auto-generated method stub
-		return -1;
+		return this.cacheSize;
 	}
 
 	@Override
     public boolean inStorage(String key){
-		// TODO Auto-generated method stub
-		return false;
+		return diskStorage.onDisk(key);
 	}
 
 	@Override
     public boolean inCache(String key){
-		// TODO Auto-generated method stub
+		// return false since cache is not yet implemented
 		return false;
 	}
 
 	@Override
     public String getKV(String key) throws Exception{
-		// TODO Auto-generated method stub
-		return "";
+		String value = diskStorage.get(key);
+		if (value == null){
+			throw new Exception("Key not found on server");
+		}
+		return value;
+	}
+
+	@Override
+	public boolean deleteKV(String key) throws Exception{
+		return diskStorage.delelteKV(key);
 	}
 
 	@Override
     public void putKV(String key, String value) throws Exception{
-		// TODO Auto-generated method stub
+		diskStorage.put(key, value);
 	}
 
 	@Override
     public void clearCache(){
-		// TODO Auto-generated method stub
+		// do nothing since cache is not yet implemented
 	}
 
 	@Override
     public void clearStorage(){
-		// TODO Auto-generated method stub
+		diskStorage.clearDisk();
 	}
 
 	@Override
     public void run(){
-		// TODO Auto-generated method stub
+		
+		logger.info("Initialize server ...");
+		try {
+			serverSocket = new ServerSocket(port);
+			logger.info("Server listening on port: " + serverSocket.getLocalPort());    
+			running = true;
+		}
+		catch (IOException e) {
+			logger.error("Error! Cannot open server socket. \n", e);
+			if (e instanceof BindException){
+             	logger.error("Port " + port + " is already bound! \n");
+            }
+			running = false;
+        }
+        
+        if (serverSocket != null) {
+	        while (running){
+	            try {
+					Socket clientSocket = serverSocket.accept();
+					KVCommunicationServer communication = new KVCommunicationServer(clientSocket, this);
+	                Thread clientThread = new Thread(communication);
+	                clientThread.start();
+	                clientThreads.add(clientThread);              
+					logger.info("Connected to " + clientSocket.getInetAddress().getHostName() +  
+							" on port " + clientSocket.getPort());
+				} 
+				catch (IOException e) {
+					logger.error("Error! Unable to establish connection. \n", e);
+	            }
+	        }
+        }
+        logger.info("Server stopped.");
 	}
 
 	@Override
     public void kill(){
-		// TODO Auto-generated method stub
+		running = false;
+		try {
+			serverSocket.close();
+		} 
+		catch (IOException e) {
+			logger.error("Error! Unable to close socket on port: " + port, e);
+		}
 	}
 
 	@Override
     public void close(){
-		// TODO Auto-generated method stub
+		running = false;
+		try {
+			for (int i = 0; i < clientThreads.size(); i++){
+                clientThreads.get(i).interrupt();
+            }
+			serverSocket.close();
+		} 
+		catch (IOException e) {
+			logger.error("Error! Unable to close socket on port: " + port, e);
+		}
 	}
+	public static void main(String[] args) throws IOException {
+    	try {
+    		new LogSetup("logs/server.log", Level.ALL);
+			if (args.length != 3) {
+				logger.error("Error! Invalid number of arguments!");
+				logger.error("Usage: Server <port> <cacheSize> <strategy>!");
+			} 
+			else {
+				int port = Integer.parseInt(args[0]);
+				int cacheSize = Integer.parseInt(args[1]);
+				String strategy = args[2];
+				new KVServer(port, cacheSize, strategy).run();
+			}
+		}
+		catch (IOException e) {
+			logger.error("Error! Unable to initialize server logger!");
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+	
 }
