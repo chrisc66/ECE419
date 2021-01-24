@@ -16,8 +16,8 @@ import java.io.File;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-public class KVServer implements IKVServer {
-	
+public class KVServer implements IKVServer, Runnable {
+
 	private static final String dir = "./data";
 	private static final String fileName = "persistanceDB.properties";
 	private static Logger logger = Logger.getRootLogger();
@@ -52,18 +52,18 @@ public class KVServer implements IKVServer {
 			this.diskStorage = new DiskStorage();
 		}
 	}
-	
+
 	private boolean storageFileExist(){
-		
+
 		File dirFIle = new File(dir);
-        if (!dirFIle.exists()){
-            return false;
-        }
-        else {
-            File dummyFile = new File(dir+'/'+fileName);
-            return dummyFile.exists();
-        }
-    }
+		if (!dirFIle.exists()){
+			return false;
+		}
+		else {
+			File dummyFile = new File(dir+'/'+fileName);
+			return dummyFile.exists();
+		}
+	}
 
 	@Override
 	public int getPort(){
@@ -71,11 +71,11 @@ public class KVServer implements IKVServer {
 	}
 
 	@Override
-    public String getHostname(){
+	public String getHostname(){
 		String hostname = "";
 		try {
 			hostname = InetAddress.getLocalHost().getHostName();
-		} 
+		}
 		catch (UnknownHostException e) {
 			logger.error("The IP address of server host cannot be resolved. \n", e);
 		}
@@ -83,7 +83,7 @@ public class KVServer implements IKVServer {
 	}
 
 	@Override
-    public CacheStrategy getCacheStrategy(){
+	public CacheStrategy getCacheStrategy(){
 		switch(this.strategy){
 			case "None":
 				return IKVServer.CacheStrategy.None;
@@ -95,28 +95,28 @@ public class KVServer implements IKVServer {
 				return IKVServer.CacheStrategy.FIFO;
 			default:
 				logger.error("Undefined use of IKVServer.CacheStrategy, setting to None.");
-				return IKVServer.CacheStrategy.None;	
+				return IKVServer.CacheStrategy.None;
 		}
 	}
 
 	@Override
-    public int getCacheSize(){
+	public int getCacheSize(){
 		return this.cacheSize;
 	}
 
 	@Override
-    public boolean inStorage(String key){
+	public boolean inStorage(String key){
 		return diskStorage.onDisk(key);
 	}
 
 	@Override
-    public boolean inCache(String key){
+	public boolean inCache(String key){
 		// return false since cache is not yet implemented
 		return false;
 	}
 
 	@Override
-    public String getKV(String key) throws Exception{
+	public String getKV(String key) throws Exception{
 		String value = diskStorage.get(key);
 		if (value == null){
 			throw new Exception("Key not found on server");
@@ -130,93 +130,89 @@ public class KVServer implements IKVServer {
 	}
 
 	@Override
-    public void putKV(String key, String value) throws Exception{
+	public void putKV(String key, String value) throws Exception{
 		diskStorage.put(key, value);
 	}
 
 	@Override
-    public void clearCache(){
+	public void clearCache(){
 		// do nothing since cache is not yet implemented
 	}
 
 	@Override
-    public void clearStorage(){
+	public void clearStorage(){
 		diskStorage.clearDisk();
 	}
 
 	@Override
-    public void run(){
-		
+	public void run(){
+
 		logger.info("Initialize server ...");
 		try {
 			serverSocket = new ServerSocket(port);
-			logger.info("Server listening on port: " + serverSocket.getLocalPort());    
+			logger.info("Server listening on port: " + serverSocket.getLocalPort());
 			running = true;
 		}
 		catch (IOException e) {
 			logger.error("Error! Cannot open server socket. \n", e);
 			if (e instanceof BindException){
-             	logger.error("Port " + port + " is already bound! \n");
-            }
+				logger.error("Port " + port + " is already bound! \n");
+			}
 			running = false;
-        }
-        
-        if (serverSocket != null) {
-	        while (running){
-	            try {
+		}
+
+		if (serverSocket != null) {
+			while (running){
+				try {
 					Socket clientSocket = serverSocket.accept();
 					KVCommunicationServer communication = new KVCommunicationServer(clientSocket, this);
-	                Thread clientThread = new Thread(communication);
-	                clientThread.start();
-	                clientThreads.add(clientThread);              
-					logger.info("Connected to " + clientSocket.getInetAddress().getHostName() +  
+					Thread clientThread = new Thread(communication);
+					clientThread.start();
+					clientThreads.add(clientThread);
+					logger.info("Connected to " + clientSocket.getInetAddress().getHostName() +
 							" on port " + clientSocket.getPort());
-				} 
+				}
 				catch (IOException e) {
 					logger.error("Error! Unable to establish connection. \n", e);
-	            }
-	        }
-        }
-        logger.info("Server stopped.");
+				}
+			}
+		}
+		logger.info("Server stopped.");
 	}
 
 	@Override
-    public void kill(){
+	public void kill(){
 		running = false;
 		try {
 			serverSocket.close();
-		} 
+		}
 		catch (IOException e) {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
 
 	@Override
-    public void close(){
+	public void close(){
 		running = false;
 		try {
 			for (int i = 0; i < clientThreads.size(); i++){
-                clientThreads.get(i).interrupt();
-            }
+				clientThreads.get(i).interrupt();
+			}
 			serverSocket.close();
-		} 
+		}
 		catch (IOException e) {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
+
 	public static void main(String[] args) throws IOException {
-    	try {
-    		new LogSetup("logs/server.log", Level.ALL);
-			if (args.length != 3) {
-				logger.error("Error! Invalid number of arguments!");
-				logger.error("Usage: Server <port> <cacheSize> <strategy>!");
-			} 
-			else {
-				int port = Integer.parseInt(args[0]);
-				int cacheSize = Integer.parseInt(args[1]);
-				String strategy = args[2];
-				new KVServer(port, cacheSize, strategy).run();
-			}
+		try {
+			new LogSetup("logs/server.log", Level.ALL);
+
+			int port = 50000;
+			int cacheSize = 0;
+			String strategy = "NONE";
+			new KVServer(port, cacheSize, strategy).run();
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");
@@ -224,5 +220,5 @@ public class KVServer implements IKVServer {
 			System.exit(1);
 		}
 	}
-	
+
 }
