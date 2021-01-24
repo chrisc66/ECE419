@@ -194,7 +194,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 if (!message.getValue().equals("")){    // PUT
                     // check if key-value pair is already stored
                     try {
-                        sendMsgValue = kvServer.getKV(message.getKey());
+                        kvServer.getKV(message.getKey());
                         sendMsgType = StatusType.PUT_UPDATE;
                     }
                     catch (Exception e){
@@ -203,6 +203,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     // store / update key-value pair
                     try {
                         kvServer.putKV(message.getKey(), message.getValue());
+                        sendMsgValue = message.getValue();
                     }
                     catch (Exception e) {
                         sendMsgType = StatusType.PUT_ERROR;

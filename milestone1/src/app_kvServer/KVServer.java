@@ -16,7 +16,7 @@ import java.io.File;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-public class KVServer implements IKVServer {
+public class KVServer implements IKVServer, Runnable {
 	
 	private static final String dir = "./data";
 	private static final String fileName = "persistanceDB.properties";
@@ -204,19 +204,15 @@ public class KVServer implements IKVServer {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
+
 	public static void main(String[] args) throws IOException {
     	try {
     		new LogSetup("logs/server.log", Level.ALL);
-			if (args.length != 3) {
-				logger.error("Error! Invalid number of arguments!");
-				logger.error("Usage: Server <port> <cacheSize> <strategy>!");
-			} 
-			else {
-				int port = Integer.parseInt(args[0]);
-				int cacheSize = Integer.parseInt(args[1]);
-				String strategy = args[2];
+
+				int port = 50000;
+				int cacheSize = 0;
+				String strategy = "NONE";
 				new KVServer(port, cacheSize, strategy).run();
-			}
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");
