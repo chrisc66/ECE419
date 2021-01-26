@@ -211,9 +211,9 @@ public class KVServer implements IKVServer, Runnable {
 	public static void main(String[] args) throws IOException {
     	try {
     		new LogSetup("logs/server.log", Level.ALL);
-				int port = 50000;
-				int cacheSize = 0;
-				String strategy = "NONE";
+			int port = Integer.parseInt(args[0]);
+			int cacheSize = Integer.parseInt(args[1]);
+			String strategy = args[2];
 			new KVServer(port, cacheSize, strategy);
 		}
 		catch (IOException e) {
