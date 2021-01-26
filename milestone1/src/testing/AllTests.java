@@ -15,10 +15,7 @@ public class AllTests {
 	static {
 		try {
 			new LogSetup("logs/testing/test.log", Level.ERROR);
-			KVServer kvServer = new KVServer(50000, 10, "NONE");
-			Thread clientThread = new Thread(kvServer);
-			clientThread.start();
-
+			new KVServer(50000, 10, "NONE");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

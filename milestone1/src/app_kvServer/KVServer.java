@@ -51,6 +51,9 @@ public class KVServer implements IKVServer, Runnable {
 		else{
 			this.diskStorage = new DiskStorage();
 		}
+
+		Thread clientThread = new Thread(this);
+		clientThread.start();
 	}
 	
 	private boolean storageFileExist(){
@@ -208,11 +211,10 @@ public class KVServer implements IKVServer, Runnable {
 	public static void main(String[] args) throws IOException {
     	try {
     		new LogSetup("logs/server.log", Level.ALL);
-
 				int port = 50000;
 				int cacheSize = 0;
 				String strategy = "NONE";
-				new KVServer(port, cacheSize, strategy).run();
+			new KVServer(port, cacheSize, strategy);
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");
