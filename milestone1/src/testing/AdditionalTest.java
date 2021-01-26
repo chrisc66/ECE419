@@ -2,6 +2,7 @@ package testing;
 
 import org.junit.Test;
 import DiskStorage.DiskStorage;
+import client.KVStore;
 
 import junit.framework.TestCase;
 
@@ -54,4 +55,39 @@ public class AdditionalTest extends TestCase {
 		String Val = DB.get(keyTest);
 		assertTrue(valTest==null);
 	}
+
+	@Test
+	public void testMultiClients() {
+
+		Exception ex1 = null;
+		Exception ex2 = null;
+		final int NUM_CLIENTS = 10;
+
+		KVStore clients[] = new KVStore[NUM_CLIENTS];
+        Thread threads[] = new Thread[NUM_CLIENTS];
+
+		for (int i = 0; i < NUM_CLIENTS; i ++){
+			try {
+				clients[i] = new KVStore("localhost", 50000, NUM_CLIENTS, i);
+				threads[i] = new Thread(clients[i]);
+				threads[i].start();
+			}
+			catch (Exception e) {
+                ex1 = e;
+            }
+		}
+
+		for (int i = 0; i < NUM_CLIENTS; i ++){
+			try {
+                threads[i].join();
+			} 
+			catch (Exception e) {
+                ex2 = e;
+            }
+		}
+		
+		assertNull(ex1);
+		assertNull(ex2);
+	}
+
 }

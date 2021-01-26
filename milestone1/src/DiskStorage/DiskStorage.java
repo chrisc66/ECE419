@@ -39,7 +39,7 @@ public class DiskStorage implements DiskStorageInterface{
 
 
     /**Reading the file using Java IO*/
-    private void initalizeFile(){
+    private synchronized void initalizeFile(){
         if (this.storageFile==null){
             //first make the data directory
             logger.info("Initializing database file ...");
@@ -67,7 +67,7 @@ public class DiskStorage implements DiskStorageInterface{
         }
     }
 
-    private Map<String,String>loadHashMapFromFile(){
+    private synchronized Map<String,String>loadHashMapFromFile(){
         Map<String, String> lookUpTableContent = new HashMap<String, String>();
         Properties properties = new Properties();
         try{
@@ -82,7 +82,7 @@ public class DiskStorage implements DiskStorageInterface{
         return lookUpTableContent;
     }
 
-    private void storeMapDataIntoFile(){
+    private synchronized void storeMapDataIntoFile(){
         Properties properties = new Properties();
 
         for (Map.Entry<String,String> entry : this.LookUpTable.entrySet()) {
@@ -100,7 +100,7 @@ public class DiskStorage implements DiskStorageInterface{
 
 
     @Override
-    public boolean put(String key, String val){
+    public synchronized boolean put(String key, String val){
             //update the value
         try{
             this.LookUpTable.put(key,val);
@@ -114,7 +114,7 @@ public class DiskStorage implements DiskStorageInterface{
 
     }
     @Override
-    public String get(String key){
+    public synchronized String get(String key){
         try{
 
             String val = this.LookUpTable.get(key);
@@ -131,7 +131,7 @@ public class DiskStorage implements DiskStorageInterface{
     }
 
     @Override
-    public void clearDisk() {
+    public synchronized void clearDisk() {
         try{
             this.LookUpTable.clear();
             storeMapDataIntoFile();
@@ -141,7 +141,7 @@ public class DiskStorage implements DiskStorageInterface{
     }
 
     @Override
-    public boolean delelteKV(String key) {
+    public synchronized boolean delelteKV(String key) {
         try {
             String val =this.LookUpTable.remove(key);
             if (val == null){
@@ -158,7 +158,7 @@ public class DiskStorage implements DiskStorageInterface{
     }
 
     @Override
-    public boolean onDisk(String key) {
+    public synchronized boolean onDisk(String key) {
         if(this.LookUpTable.isEmpty()){
             return false;
         }
