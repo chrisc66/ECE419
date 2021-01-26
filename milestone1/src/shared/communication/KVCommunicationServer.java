@@ -175,21 +175,14 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 try {
                     sendMsgValue = kvServer.getKV(message.getKey());
                     sendMsgType = StatusType.GET_SUCCESS;
-                    logger.info("GET SUCCESS: Value is found on server, key: " + message.getKey());
+                    logger.info("GET_SUCCESS: Value is found on server, key: " + message.getKey());
                 }
                 catch (Exception e) {
                     sendMsgType = StatusType.GET_ERROR;
-                    logger.info("GET ERROR: Value not found on server, key: " + message.getKey());
+                    logger.info("GET_ERROR: Value not found on server, key: " + message.getKey());
                 }
                 break;
             case PUT: 
-                System.out.println("############# Key - Value #############");
-                System.out.println(message.getKey());
-                System.out.println(message.getValue());
-                if (message.getValue().equals("")){
-                    System.out.println("Value " + message.getValue() + "is empty string");
-                }
-                System.out.println("#######################################");
                 // Identify status type and store key-value pair on the server
                 if (!message.getValue().equals("")){    // PUT
                     // check if key-value pair is already stored
