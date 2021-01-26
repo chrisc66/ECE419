@@ -35,7 +35,7 @@ public class ConnectionTest extends TestCase {
 			System.out.println("testUnknownHost");
 			ex = e; 
 		}
-		ex.printStackTrace();
+		
 		assertTrue(ex instanceof UnknownHostException);
 	}
 	
@@ -53,8 +53,4 @@ public class ConnectionTest extends TestCase {
 		assertTrue(ex instanceof IllegalArgumentException);
 	}
 	
-	
-
-	
 }
-
