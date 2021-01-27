@@ -13,7 +13,7 @@ import org.apache.log4j.Logger;
 public class KVMessageClass implements KVMessage, Serializable {
 
     private static Logger logger = Logger.getRootLogger();
-    private static final String DELIMITOR = System.getProperty("line.separator"); // byte value -1 or 10
+    private static final String DELIMITOR = System.getProperty("line.separator") + System.getProperty("line.separator"); // byte value -1 or 10
     private static final int MAX_KEY_SIZE = 20;
     private static final int BUFFER_SIZE = 1024;
     private static final int MAX_BUFF_SIZE = 120 * BUFFER_SIZE;
@@ -41,6 +41,7 @@ public class KVMessageClass implements KVMessage, Serializable {
         this.value = elements[2];
         
         if (key.getBytes(StandardCharsets.UTF_8).length > MAX_KEY_SIZE){
+            System.out.println(" KVmessage  key = " + Arrays.toString(key.getBytes())+ "  byte = "+ key.getBytes(StandardCharsets.UTF_8));
             throw new Exception("Key exceed maximum allowed size of " + MAX_KEY_SIZE + "bytes.");
         }
         if (messageBytes.length > MAX_BUFF_SIZE){
