@@ -54,23 +54,18 @@ public class KVStore implements KVCommInterface, Runnable {
 	@Override
 	public void connect() throws Exception {
 		try {
-			System.out.println("serverAddress = "+ serverAddress +", serverPort = "+serverPort);
 			clientSocket = new Socket(serverAddress, serverPort);
 			kvCommunication = new KVCommunicationClient(clientSocket);
 			output = clientSocket.getOutputStream();
 			input = clientSocket.getInputStream();
-			System.out.println("Connection is established! \t output stream = " + output);
+			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 		}
-		catch (UnknownHostException unknownE) {
-			System.err.println("In catch IOException: "+unknownE.getClass());
+		catch (UnknownHostException e) {
 			throw new UnknownHostException();
-		} catch (IllegalArgumentException illegalArgE) {
-			System.err.println("In catch IOException: "+illegalArgE.getClass());
+		} catch (IllegalArgumentException e) {
 			throw new IllegalArgumentException();
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("Socket error");
-			throw new Exception();
+			throw new Exception(e);
 		}
 	}
 
