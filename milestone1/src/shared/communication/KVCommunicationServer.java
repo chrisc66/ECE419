@@ -70,11 +70,21 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 		byte read = (byte) input.read();	
 		boolean reading = true;
         int numDeliminator = 0;
-
+        int count = 0;
+        boolean cont = false;
         while (reading) {
 
             if (read == 10){
-                numDeliminator ++;
+                cont = true;
+                count ++;
+                if ((cont == true) && (count == 2)) {
+                    numDeliminator ++;
+                    count = 0;
+                    cont = false;
+                }
+            } else {
+                count = 0;
+                cont = false;
             }
             if (numDeliminator == 3){
                 break;

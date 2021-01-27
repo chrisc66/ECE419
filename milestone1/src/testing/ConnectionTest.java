@@ -32,7 +32,6 @@ public class ConnectionTest extends TestCase {
 		try {
 			kvClient.connect();
 		} catch (Exception e) {
-			System.out.println("testUnknownHost");
 			ex = e; 
 		}
 		

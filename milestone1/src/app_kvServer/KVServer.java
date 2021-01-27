@@ -134,7 +134,10 @@ public class KVServer implements IKVServer, Runnable {
 
 	@Override
     public void putKV(String key, String value) throws Exception{
-		diskStorage.put(key, value);
+		boolean success = diskStorage.put(key, value);
+		if (success == false){
+			throw new Exception("Unable to put key value pair into storage");
+		}
 	}
 
 	@Override

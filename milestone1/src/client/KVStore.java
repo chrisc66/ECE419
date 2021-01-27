@@ -10,53 +10,62 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 
-public class KVStore implements KVCommInterface {
+public class KVStore implements KVCommInterface, Runnable {
 	private Socket clientSocket;
 	private OutputStream output;
 	private InputStream input;
 	private KVCommunicationClient kvCommunication;
 	private String serverAddress;
 	private int serverPort;
+	private int total_clients;		// only used for unit testing
+	private int clientID;			// only used for unit testing
+	private boolean testSuccess;		// only used for unit testing
 
 	/**
-	 * Initialize KVStore with address and port of KVServer
+	 * Initialize KVStore with KVServer address and port.
+	 * Default constructor for initializing normal client.
 	 * @param address the address of the KVServer
 	 * @param port the port of the KVServer
 	 */
 	public KVStore(String address, int port) {
-		serverAddress = address;
-		serverPort = port;
-//		try {
-//			clientSocket = new Socket(address, port);
-//		} catch (Exception e) {
-//			System.out.println("new Socket fails");
-//		}
+		this.serverAddress = address;
+		this.serverPort = port;
+		this.total_clients = -1;
+		this.clientID = -1;
+		this.testSuccess = true;
+	}
+
+	/**
+	 * Initialize KVStore with KVServer address, port and additional testing information.
+	 * Second constructor only for unit testing.
+	 * @param address the address of the KVServer
+	 * @param port the port of the KVServer
+	 * @param total_clients the total number of clients (for unit test only)
+	 * @param clientID the identifier of this client (for unit test only)
+	 */
+	public KVStore(String address, int port, int total_clients, int clientID) {
+		this.serverAddress = address;
+		this.serverPort = port;
+		this.total_clients = total_clients;
+		this.clientID = clientID;
+		this.testSuccess = true;
 	}
 
 	@Override
 	public void connect() throws Exception {
-//		clientSocket = new Socket(serverAddress, serverPort);
 		try {
-			System.out.println("serverAddress = "+ serverAddress +" serverPort = "+serverPort);
 			clientSocket = new Socket(serverAddress, serverPort);
-			System.out.println("new Socket");
 			kvCommunication = new KVCommunicationClient(clientSocket);
-			System.out.println("new KVCommunicationClient");
 			output = clientSocket.getOutputStream();
 			input = clientSocket.getInputStream();
-			System.out.println("Connection is established! \t output stream = " + output);
+			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 		}
-		catch (UnknownHostException unknownE) {
-//			System.out.println("Connection Failed!");
-			System.err.println("In catch IOException: "+unknownE.getClass());
+		catch (UnknownHostException e) {
 			throw new UnknownHostException();
-		} catch (IllegalArgumentException illegalArgE) {
-			System.err.println("In catch IOException: "+illegalArgE.getClass());
+		} catch (IllegalArgumentException e) {
 			throw new IllegalArgumentException();
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("Socket error");
-			throw new Exception();
+			throw new Exception(e);
 		}
 	}
 
@@ -91,5 +100,33 @@ public class KVStore implements KVCommInterface {
 
 	public boolean isRunning() {
 		return (kvCommunication != null) && kvCommunication.isOpen();
+	}
+
+	public boolean testSuccess() {
+		return this.testSuccess;
+	}
+
+	/**
+	 * Only used for unit testing.
+	 * Tests multiple clients that connect to one server.
+	 */
+	public void run() {
+		try {
+			String getVal = "";
+			connect();
+			for (int i = clientID; i < clientID + total_clients; i ++){
+				put("key" + i, "value" + i);
+			}
+			for (int i = clientID; i < clientID + total_clients; i ++){
+				getVal = get("key" + i).getValue();
+				if (!getVal.equals("value" + i)){
+					testSuccess = false;
+				}
+			} 
+			disconnect();
+		}
+		catch (Exception e){
+			testSuccess = false;
+		}
 	}
 }
