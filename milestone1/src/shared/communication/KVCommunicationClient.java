@@ -38,9 +38,10 @@ public class KVCommunicationClient implements IKVCommunication {
         try {
             this.input = clientSocket.getInputStream();
             this.output = clientSocket.getOutputStream();
+            logger.info("Opening connection.");
         }
         catch (IOException e) {
-            logger.error("Error! Connection could not be established!", e);
+            logger.error("Connection could not be established!", e);
         }
     }
     
@@ -52,10 +53,8 @@ public class KVCommunicationClient implements IKVCommunication {
         byte[] messageBytes = message.getMessageBytes();
 		output.write(messageBytes, 0, messageBytes.length);
 		output.flush();
-        logger.info("SEND \t<" 
-				+ clientSocket.getInetAddress().getHostAddress() + ":" 
-				+ clientSocket.getPort() + ">: '" 
-                + message.getMessage() +"'");
+        logger.debug("SEND <" + clientSocket.getInetAddress().getHostAddress() + ":" 
+				+ clientSocket.getPort() + ">: '" + message.getMessage() +"'");
     }
 
     public KVMessage receive() throws IOException, Exception {
@@ -129,10 +128,8 @@ public class KVCommunicationClient implements IKVCommunication {
         
 		/* build final String */
 		KVMessage msg = new KVMessageClass(msgBytes);
-		logger.info("RECEIVE \t<" 
-				+ clientSocket.getInetAddress().getHostAddress() + ":" 
-				+ clientSocket.getPort() + ">: '" 
-				+ msg.getMessage().trim() + "'");
+		logger.debug("RECEIVE <" + clientSocket.getInetAddress().getHostAddress() + ":" 
+				+ clientSocket.getPort() + ">: '" + msg.getMessage().trim() + "'");
 
         return msg;
     }
@@ -149,6 +146,7 @@ public class KVCommunicationClient implements IKVCommunication {
             if (output != null){
                 output.close();
             }
+            logger.info("Closing connection.");
         }
         catch (IOException e) {
             logger.error("Unable to close connection.", e);

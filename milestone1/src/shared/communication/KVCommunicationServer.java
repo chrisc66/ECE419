@@ -39,6 +39,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         try {
             this.input = clientSocket.getInputStream();
             this.output = clientSocket.getOutputStream();
+            logger.info("Opening connection.");
         }
         catch (IOException e) {
             logger.error("Error! Connection could not be established!", e);
@@ -53,10 +54,8 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         byte[] messageBytes = message.getMessageBytes();
 		output.write(messageBytes, 0, messageBytes.length);
 		output.flush();
-		logger.info("SEND \t<" 
-				+ clientSocket.getInetAddress().getHostAddress() + ":" 
-				+ clientSocket.getPort() + ">: '" 
-                + message.getMessage() +"'");
+		logger.debug("SEND <" + clientSocket.getInetAddress().getHostAddress() + ":" 
+				+ clientSocket.getPort() + ">: '" + message.getMessage() +"'");
     }
 
     public KVMessage receive() throws IOException, Exception {
@@ -131,10 +130,8 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         
 		/* build final String */
         KVMessage msg = new KVMessageClass(msgBytes);
-		logger.info("RECEIVE \t<" 
-				+ clientSocket.getInetAddress().getHostAddress() + ":" 
-				+ clientSocket.getPort() + ">: '" 
-				+ msg.getMessage().trim() + "'");
+		logger.debug("RECEIVE <" + clientSocket.getInetAddress().getHostAddress() + ":" 
+				+ clientSocket.getPort() + ">: '" + msg.getMessage().trim() + "'");
         
         return msg;
     }
@@ -151,6 +148,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
             if (output != null){
                 output.close();
             }
+            logger.info("Closing connection.");
         }
         catch (IOException e) {
             logger.error("Unable to close connection.", e);
@@ -246,6 +244,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
     }
 
+    /**
+     * This is the run() method for KVCommunicationServer thread. 
+     * Waits on incomming KVMessages, process the message upon receiving and send back to client.
+     */
     public void run(){
         // KVCommunicationServer process runs in this loop
         while (open) {
