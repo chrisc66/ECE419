@@ -37,8 +37,9 @@ public class DiskStorage implements DiskStorageInterface{
         this.LookUpTable = Collections.synchronizedMap(loadHashMapFromFile());
     }
 
-
-    /**Reading the file using Java IO*/
+    /**
+     * Reading the file using Java IO
+     */
     private synchronized void initalizeFile(){
         if (this.storageFile==null){
             //first make the data directory
@@ -96,12 +97,9 @@ public class DiskStorage implements DiskStorageInterface{
 
     }
 
-
-
-
     @Override
     public synchronized boolean put(String key, String val){
-            //update the value
+        //update the value
         try{
             this.LookUpTable.put(key,val);
             logger.info("Successfully Inserted KV pair of: " + key+'-'+val);
@@ -116,7 +114,6 @@ public class DiskStorage implements DiskStorageInterface{
     @Override
     public synchronized String get(String key){
         try{
-
             String val = this.LookUpTable.get(key);
             if (val==null){
                 logger.info("Did not find the corresponding value for the given key of "+key);
@@ -164,6 +161,5 @@ public class DiskStorage implements DiskStorageInterface{
         }
         return this.LookUpTable.containsKey(key);
     }
-
 
 }

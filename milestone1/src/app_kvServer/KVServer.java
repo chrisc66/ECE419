@@ -57,7 +57,6 @@ public class KVServer implements IKVServer, Runnable {
 	}
 	
 	private boolean storageFileExist(){
-		
 		File dirFIle = new File(dir);
         if (!dirFIle.exists()){
             return false;
@@ -122,7 +121,8 @@ public class KVServer implements IKVServer, Runnable {
     public String getKV(String key) throws Exception{
 		String value = diskStorage.get(key);
 		if (value == null){
-			throw new Exception("Key not found on server");
+			logger.error("Key " + key + " cannot be found on server");
+			throw new Exception("Key cannot be found on server");
 		}
 		return value;
 	}
@@ -136,7 +136,8 @@ public class KVServer implements IKVServer, Runnable {
     public void putKV(String key, String value) throws Exception{
 		boolean success = diskStorage.put(key, value);
 		if (success == false){
-			throw new Exception("Unable to put key value pair into storage");
+			logger.error("Unable to put key value pair into storage. Key = " + key + ", Value = " + value);
+			throw new Exception("Unable to put key value pair into storage.");
 		}
 	}
 
@@ -202,7 +203,7 @@ public class KVServer implements IKVServer, Runnable {
 		running = false;
 		try {
 			for (int i = 0; i < clientThreads.size(); i++){
-                clientThreads.get(i).interrupt();
+                clientThreads.get(i).interrupt();	// interrupt and stop all threads
             }
 			serverSocket.close();
 		} 
