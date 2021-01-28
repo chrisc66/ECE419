@@ -6,13 +6,16 @@ import client.KVStore;
 
 import junit.framework.TestCase;
 
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
+
 
 public class AdditionalTest extends TestCase {
 	
 	// TODO add your test cases, at least 3
 	
 	@Test
-	public void testStub() {
+	public void testDiskStorageSequence() {
 		String keyTest = "dummy";
 		String keyTest_1 = "Dummy_11";
 		String valTest = "dddddddddddd";
@@ -42,7 +45,7 @@ public class AdditionalTest extends TestCase {
 	}
 
 	@Test
-	public void diskStorageTestBasic(){
+	public void testDisckStorageBasic(){
 		String keyTest = "dummy";
 		String valTest = "dddddddddddd";
 
@@ -50,10 +53,9 @@ public class AdditionalTest extends TestCase {
 		try {
 			DB.put(keyTest, valTest);
 		}catch (Exception e){
-
 		}
 		String Val = DB.get(keyTest);
-		assertTrue(valTest==null);
+		assertTrue(valTest==Val);
 	}
 
 	@Test
@@ -88,6 +90,24 @@ public class AdditionalTest extends TestCase {
 		
 		assertNull(ex1);
 		assertNull(ex2);
+	}
+
+	@Test
+	public void testdiskStorageGetRequestsStressTest() {
+		Exception ex1 = null;
+		Exception ex2 = null;
+		final int requestNum = 100;
+		Random random = ThreadLocalRandom.current();
+		byte[] r = new byte[20]; //Means 2048 bit
+		random.nextBytes(r);
+		String s = new String(r);
+
+		DiskStorage DB = new DiskStorage();
+		DB.put("k","test");
+		for (int i = 0; i < requestNum; i ++){
+			assertEquals("test", DB.get("k"));
+		}
+
 	}
 
 }
