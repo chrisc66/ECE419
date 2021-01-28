@@ -1,5 +1,6 @@
 package testing;
 
+import app_kvServer.KVServer;
 import org.junit.Test;
 
 import client.KVStore;
@@ -88,12 +89,11 @@ public class InteractionTest extends TestCase {
 
 		try {
 			kvClient.put(key, value);
-			response = kvClient.put(key, "null");
+			response = kvClient.put(key, "");
 			
 		} catch (Exception e) {
 			ex = e;
 		}
-
 		assertTrue(ex == null && response.getStatus() == StatusType.DELETE_SUCCESS);
 	}
 	

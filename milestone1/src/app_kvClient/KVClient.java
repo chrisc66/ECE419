@@ -32,7 +32,7 @@ public class KVClient implements IKVClient {
             kvStore.connect();
         }
         catch (Exception e){
-            System.out.print("HERE !!!!!!!!!");
+            printError("The socket cannot be initialized! ");
         }
     }
 
@@ -64,7 +64,7 @@ public class KVClient implements IKVClient {
             if(kvStore != null){
                 kvStore.disconnect();
             }
-            System.out.println(PROMPT + "Application exit!");
+            System.out.println("Application exit!");
         } 
         else if (tokens[0].equals("connect")){
             if(tokens.length == 3) {
@@ -72,14 +72,15 @@ public class KVClient implements IKVClient {
                     serverAddress = tokens[1];
                     serverPort = Integer.parseInt(tokens[2]);
                     newConnection(serverAddress, serverPort);
+                    logger.info("Connected to server, address: " + tokens[1] + ", port: " + tokens[2]);
                 } 
-                catch(NumberFormatException nfe) {
+                catch(NumberFormatException e) {
                     printError("No valid address. Port must be a number!");
-                    logger.info("Unable to parse argument <port>", nfe);
+                    logger.error("Unable to parse argument <port>", e);
                 } 
                 catch (UnknownHostException e) {
                     printError("Unknown Host!");
-                    logger.info("Unknown Host!", e);
+                    logger.error("Unknown Host!", e);
                 } 
                 catch (IOException e) {
                     printError("Could not establish connection!");
@@ -88,6 +89,7 @@ public class KVClient implements IKVClient {
             } 
             else {
                 printError("Invalid number of parameters!");
+                logger.error("Invalid number of parameters!");
             }
 
         } 
@@ -103,13 +105,16 @@ public class KVClient implements IKVClient {
                         }
                     }
                     kvStore.put(key, value.toString());
+                    logger.info("Sending PUT message, " + "Key: " + key + ", Value: " + value.toString());
                 } 
                 else {
-                    printError("Not connected!");
+                    printError("Not connected to server!");
+                    logger.error("Not connected to server!");
                 }
             } 
             else {
-                printError("No message passed!");
+                printError("No message passed to server!");
+                logger.error("No message passed to server!");
             }
         } 
         else if (tokens[0].equals("get")) {
@@ -118,55 +123,63 @@ public class KVClient implements IKVClient {
                     String key = tokens[1];
                     KVMessage msg = kvStore.get(key);
                     printOutput("Key: " + msg.getKey() + ", Value: " + msg.getValue());
+                    logger.info("Sending GET message, " + "Key: " + msg.getKey() + ", Value: " + msg.getValue());
                 } 
                 else {
-                    printError("Not connected!");
+                    printError("Not connected to server!");
+                    logger.error("Not connected to server!");
                 }
             } 
             else {
-                printError("No message passed!");
+                printError("No message passed to server!");
+                logger.error("No message passed to server!");
             }
         } 
         else if(tokens[0].equals("disconnect")) {
             if(kvStore != null){
                 kvStore.disconnect();
             }
+            logger.info("Disconnect from server.");
         } 
         else if(tokens[0].equals("logLevel")) {
             if(tokens.length == 2) {
                 String level = setLevel(tokens[1]);
                 if(level.equals(LogSetup.UNKNOWN_LEVEL)) {
-                    printError("No valid log level!");
+                    printError(level + " is not a valid log level!");
+                    logger.error(level + " is not a valid log level!");
                     printPossibleLogLevels();
                 } 
                 else {
-                    logger.info(PROMPT + "Log level changed to level " + level);
+                    logger.info("Log level changed to level: " + level);
                 }
             } 
             else {
                 printError("Invalid number of parameters!");
+                logger.error("Invalid number of parameters!");
             }
 
         } 
         else if(tokens[0].equals("help")) {
             printHelp();
+            logger.info("Printing help to stdout.");
         } 
         else {
             printError("Unknown command, see help");
+            logger.error("Unknown command: " + tokens[0]);
         }
     }
 
     private void printError(String error){
-        System.out.println(PROMPT + "Error! " +  error);
+        System.out.println("Error! " +  error);
     }
 
     private void printOutput(String out){
-        System.out.println(PROMPT + out);
+        System.out.println(out);
     }
 
     private void printPossibleLogLevels() {
-        System.out.println(PROMPT + "Possible log levels are:");
-        System.out.println(PROMPT + LogSetup.getPossibleLogLevels());
+        System.out.println("Possible log levels are:");
+        System.out.println(LogSetup.getPossibleLogLevels());
     }
 
     private String setLevel(String levelString) {
@@ -218,13 +231,22 @@ public class KVClient implements IKVClient {
     public static void main(String[] args) throws Exception{
         try {
             new LogSetup("logs/client.log", Level.ALL);
-            KVClient app = new KVClient();
-            app.run();
         } 
         catch (IOException e) {
-            logger.error("Error! Unable to initialize client logger!", e);
+            System.out.println("Error! Unable to initialize client logger!");
+            logger.error("Unable to initialize client logger!", e);
+            System.exit(1);
+        }
+        try {
+            KVClient app = new KVClient();
+            app.run();
+        }
+        catch (Exception e){
+            System.out.println("Error! Client terminated!");
+            logger.error("Client terminated. ", e);
 			e.printStackTrace();
 			System.exit(1);
         }
     }
+
 }

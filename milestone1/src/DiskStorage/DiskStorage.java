@@ -37,9 +37,10 @@ public class DiskStorage implements DiskStorageInterface{
         this.LookUpTable = Collections.synchronizedMap(loadHashMapFromFile());
     }
 
-
-    /**Reading the file using Java IO*/
-    private void initalizeFile(){
+    /**
+     * Reading the file using Java IO
+     */
+    private synchronized void initalizeFile(){
         if (this.storageFile==null){
             //first make the data directory
             logger.info("Initializing database file ...");
@@ -67,7 +68,7 @@ public class DiskStorage implements DiskStorageInterface{
         }
     }
 
-    private Map<String,String>loadHashMapFromFile(){
+    private synchronized Map<String,String>loadHashMapFromFile(){
         Map<String, String> lookUpTableContent = new HashMap<String, String>();
         Properties properties = new Properties();
         try{
@@ -82,7 +83,7 @@ public class DiskStorage implements DiskStorageInterface{
         return lookUpTableContent;
     }
 
-    private void storeMapDataIntoFile(){
+    private synchronized void storeMapDataIntoFile(){
         Properties properties = new Properties();
 
         for (Map.Entry<String,String> entry : this.LookUpTable.entrySet()) {
@@ -96,12 +97,9 @@ public class DiskStorage implements DiskStorageInterface{
 
     }
 
-
-
-
     @Override
-    public boolean put(String key, String val){
-            //update the value
+    public synchronized boolean put(String key, String val){
+        //update the value
         try{
             this.LookUpTable.put(key,val);
             logger.info("Successfully Inserted KV pair of: " + key+'-'+val);
@@ -114,9 +112,8 @@ public class DiskStorage implements DiskStorageInterface{
 
     }
     @Override
-    public String get(String key){
+    public synchronized String get(String key){
         try{
-
             String val = this.LookUpTable.get(key);
             if (val==null){
                 logger.info("Did not find the corresponding value for the given key of "+key);
@@ -131,7 +128,7 @@ public class DiskStorage implements DiskStorageInterface{
     }
 
     @Override
-    public void clearDisk() {
+    public synchronized void clearDisk() {
         try{
             this.LookUpTable.clear();
             storeMapDataIntoFile();
@@ -141,7 +138,7 @@ public class DiskStorage implements DiskStorageInterface{
     }
 
     @Override
-    public boolean delelteKV(String key) {
+    public synchronized boolean delelteKV(String key) {
         try {
             String val =this.LookUpTable.remove(key);
             if (val == null){
@@ -158,12 +155,11 @@ public class DiskStorage implements DiskStorageInterface{
     }
 
     @Override
-    public boolean onDisk(String key) {
+    public synchronized boolean onDisk(String key) {
         if(this.LookUpTable.isEmpty()){
             return false;
         }
         return this.LookUpTable.containsKey(key);
     }
-
 
 }

@@ -52,8 +52,4 @@ public class ConnectionTest extends TestCase {
 		assertTrue(ex instanceof IllegalArgumentException);
 	}
 	
-	
-
-	
 }
-

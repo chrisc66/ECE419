@@ -7,38 +7,71 @@ import shared.messages.KVMessageClass;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
-public class KVStore implements KVCommInterface {
+public class KVStore implements KVCommInterface, Runnable {
+	
+	private static Logger logger = Logger.getRootLogger();
 	private Socket clientSocket;
-	private OutputStream output;
-	private InputStream input;
 	private KVCommunicationClient kvCommunication;
+	private String serverAddress;
+	private int serverPort;
+	private int total_clients;		// only used for unit testing
+	private int clientID;			// only used for unit testing
+	private boolean testSuccess;	// only used for unit testing
 
 	/**
-	 * Initialize KVStore with address and port of KVServer
+	 * Initialize KVStore with KVServer address and port.
+	 * Default constructor for initializing normal client.
 	 * @param address the address of the KVServer
 	 * @param port the port of the KVServer
 	 */
 	public KVStore(String address, int port) {
-		try {
-			clientSocket = new Socket(address, port);
-			kvCommunication = new KVCommunicationClient(clientSocket);
-		} 
-		catch (Exception e) {
-			System.out.println("Socket is created!");
-		}
+		this.serverAddress = address;
+		this.serverPort = port;
+		this.total_clients = -1;
+		this.clientID = -1;
+		this.testSuccess = true;
+	}
+
+	/**
+	 * Initialize KVStore with KVServer address, port and additional testing information.
+	 * Second constructor only for unit testing.
+	 * @param address the address of the KVServer
+	 * @param port the port of the KVServer
+	 * @param total_clients the total number of clients (for unit test only)
+	 * @param clientID the identifier of this client (for unit test only)
+	 */
+	public KVStore(String address, int port, int total_clients, int clientID) {
+		this.serverAddress = address;
+		this.serverPort = port;
+		this.total_clients = total_clients;
+		this.clientID = clientID;
+		this.testSuccess = true;
 	}
 
 	@Override
 	public void connect() throws Exception {
 		try {
-			output = clientSocket.getOutputStream();
-			input = clientSocket.getInputStream();
-			System.out.println("Connection is established! \t output stream = " + output);
+			clientSocket = new Socket(serverAddress, serverPort);
+			kvCommunication = new KVCommunicationClient(clientSocket);
+			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
+			logger.info("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
+		}
+		catch (UnknownHostException e) {
+			logger.error("UnknownHostException occured!");
+			throw new UnknownHostException();
+		} 
+		catch (IllegalArgumentException e) {
+			logger.error("IllegalArgumentException occured!");
+			throw new IllegalArgumentException();
 		} 
 		catch (Exception e) {
-			System.out.println("Connection Failed!");
+			logger.error("Exception occured!");
+			throw new Exception(e);
 		}
 	}
 
@@ -50,9 +83,11 @@ public class KVStore implements KVCommInterface {
 				kvCommunication.send(kvmessage);
 				kvCommunication.receive();
 				kvCommunication.close();
+				logger.debug("Disconnected from server.");
 			}
 			catch (Exception e) {
-				System.out.println("Close Socket Failed!");
+				System.out.println("Error! Close Socket Failed!");
+				logger.error("Close Socket Failed!", e);
 			}
 		}
 	}
@@ -74,4 +109,33 @@ public class KVStore implements KVCommInterface {
 	public boolean isRunning() {
 		return (kvCommunication != null) && kvCommunication.isOpen();
 	}
+
+	public boolean testSuccess() {
+		return this.testSuccess;
+	}
+
+	/**
+	 * Only used for unit testing.
+	 * Tests multiple clients that connect to one server.
+	 */
+	public void run() {
+		try {
+			String getVal = "";
+			connect();
+			for (int i = clientID; i < clientID + total_clients; i ++){
+				put("key" + i, "value" + i);
+			}
+			for (int i = clientID; i < clientID + total_clients; i ++){
+				getVal = get("key" + i).getValue();
+				if (!getVal.equals("value" + i)){
+					testSuccess = false;
+				}
+			} 
+			disconnect();
+		}
+		catch (Exception e){
+			testSuccess = false;
+		}
+	}
+
 }

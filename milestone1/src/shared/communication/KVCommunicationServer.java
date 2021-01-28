@@ -39,6 +39,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         try {
             this.input = clientSocket.getInputStream();
             this.output = clientSocket.getOutputStream();
+            logger.info("Opening connection.");
         }
         catch (IOException e) {
             logger.error("Error! Connection could not be established!", e);
@@ -53,10 +54,8 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         byte[] messageBytes = message.getMessageBytes();
 		output.write(messageBytes, 0, messageBytes.length);
 		output.flush();
-		logger.info("SEND \t<" 
-				+ clientSocket.getInetAddress().getHostAddress() + ":" 
-				+ clientSocket.getPort() + ">: '" 
-                + message.getMessage() +"'");
+		logger.debug("SEND <" + clientSocket.getInetAddress().getHostAddress() + ":" 
+				+ clientSocket.getPort() + ">: '" + message.getMessage() +"'");
     }
 
     public KVMessage receive() throws IOException, Exception {
@@ -67,22 +66,28 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 		byte[] bufferBytes = new byte[BUFFER_SIZE];
         
 		/* read first char from stream */
-		byte read = (byte) input.read();	
-		boolean reading = true;
+        /* read first char from stream */
+        byte read = 0;  // read from input stream
+        byte prev = 0;  // prev of read
+        byte copy = 0;  // copy of read
+        boolean reading = true;
         int numDeliminator = 0;
+        while (reading && numDeliminator != 3) {
 
-        while (reading) {
+            /* read next char from stream */
+            prev = copy;
+            read = (byte) input.read();
+            copy = read;
 
-            if (read == 10){
+            // "D" = 68, "\n" = 10
+            if (prev == 68 && copy == 10){
                 numDeliminator ++;
             }
-            if (numDeliminator == 3){
-                break;
-            }
+
             if (read == -1){
                 return new KVMessageClass(StatusType.DISCONNECT, "", "");
             }
-
+            
             /* if buffer filled, copy to msg array */
 			if(index == BUFFER_SIZE) {
 				if (msgBytes == null){
@@ -108,10 +113,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 			/* stop reading is MAX_BUFF_SIZE is reached */
 			if(msgBytes != null && msgBytes.length + index >= MAX_BUFF_SIZE) {
 				reading = false;
-			}
-
-			/* read next char from stream */
-			read = (byte) input.read();
+            }
 		}
 
         if (msgBytes == null){
@@ -128,10 +130,8 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         
 		/* build final String */
         KVMessage msg = new KVMessageClass(msgBytes);
-		logger.info("RECEIVE \t<" 
-				+ clientSocket.getInetAddress().getHostAddress() + ":" 
-				+ clientSocket.getPort() + ">: '" 
-				+ msg.getMessage().trim() + "'");
+		logger.debug("RECEIVE <" + clientSocket.getInetAddress().getHostAddress() + ":" 
+				+ clientSocket.getPort() + ">: '" + msg.getMessage().trim() + "'");
         
         return msg;
     }
@@ -148,6 +148,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
             if (output != null){
                 output.close();
             }
+            logger.info("Closing connection.");
         }
         catch (IOException e) {
             logger.error("Unable to close connection.", e);
@@ -175,26 +176,19 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 try {
                     sendMsgValue = kvServer.getKV(message.getKey());
                     sendMsgType = StatusType.GET_SUCCESS;
-                    logger.info("GET SUCCESS: Value is found on server, key: " + message.getKey());
+                    logger.info("GET_SUCCESS: Value is found on server, key: " + message.getKey());
                 }
                 catch (Exception e) {
                     sendMsgType = StatusType.GET_ERROR;
-                    logger.info("GET ERROR: Value not found on server, key: " + message.getKey());
+                    logger.info("GET_ERROR: Value not found on server, key: " + message.getKey());
                 }
                 break;
             case PUT: 
-                System.out.println("############# Key - Value #############");
-                System.out.println(message.getKey());
-                System.out.println(message.getValue());
-                if (message.getValue().equals("")){
-                    System.out.println("Value " + message.getValue() + "is empty string");
-                }
-                System.out.println("#######################################");
                 // Identify status type and store key-value pair on the server
                 if (!message.getValue().equals("")){    // PUT
                     // check if key-value pair is already stored
                     try {
-                        sendMsgValue = kvServer.getKV(message.getKey());
+                        kvServer.getKV(message.getKey());
                         sendMsgType = StatusType.PUT_UPDATE;
                     }
                     catch (Exception e){
@@ -203,6 +197,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     // store / update key-value pair
                     try {
                         kvServer.putKV(message.getKey(), message.getValue());
+                        sendMsgValue = message.getValue();
                     }
                     catch (Exception e) {
                         sendMsgType = StatusType.PUT_ERROR;
@@ -249,6 +244,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
     }
 
+    /**
+     * This is the run() method for KVCommunicationServer thread. 
+     * Waits on incomming KVMessages, process the message upon receiving and send back to client.
+     */
     public void run(){
         // KVCommunicationServer process runs in this loop
         while (open) {

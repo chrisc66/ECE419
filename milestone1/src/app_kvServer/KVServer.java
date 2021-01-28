@@ -16,7 +16,7 @@ import java.io.File;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-public class KVServer implements IKVServer {
+public class KVServer implements IKVServer, Runnable {
 	
 	private static final String dir = "./data";
 	private static final String fileName = "persistanceDB.properties";
@@ -51,10 +51,12 @@ public class KVServer implements IKVServer {
 		else{
 			this.diskStorage = new DiskStorage();
 		}
+
+		Thread clientThread = new Thread(this);
+		clientThread.start();
 	}
 	
 	private boolean storageFileExist(){
-		
 		File dirFIle = new File(dir);
         if (!dirFIle.exists()){
             return false;
@@ -119,7 +121,8 @@ public class KVServer implements IKVServer {
     public String getKV(String key) throws Exception{
 		String value = diskStorage.get(key);
 		if (value == null){
-			throw new Exception("Key not found on server");
+			logger.error("Key " + key + " cannot be found on server");
+			throw new Exception("Key cannot be found on server");
 		}
 		return value;
 	}
@@ -131,7 +134,11 @@ public class KVServer implements IKVServer {
 
 	@Override
     public void putKV(String key, String value) throws Exception{
-		diskStorage.put(key, value);
+		boolean success = diskStorage.put(key, value);
+		if (success == false){
+			logger.error("Unable to put key value pair into storage. Key = " + key + ", Value = " + value);
+			throw new Exception("Unable to put key value pair into storage.");
+		}
 	}
 
 	@Override
@@ -196,7 +203,7 @@ public class KVServer implements IKVServer {
 		running = false;
 		try {
 			for (int i = 0; i < clientThreads.size(); i++){
-                clientThreads.get(i).interrupt();
+                clientThreads.get(i).interrupt();	// interrupt and stop all threads
             }
 			serverSocket.close();
 		} 
@@ -204,19 +211,14 @@ public class KVServer implements IKVServer {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
+
 	public static void main(String[] args) throws IOException {
     	try {
     		new LogSetup("logs/server.log", Level.ALL);
-			if (args.length != 3) {
-				logger.error("Error! Invalid number of arguments!");
-				logger.error("Usage: Server <port> <cacheSize> <strategy>!");
-			} 
-			else {
-				int port = Integer.parseInt(args[0]);
-				int cacheSize = Integer.parseInt(args[1]);
-				String strategy = args[2];
-				new KVServer(port, cacheSize, strategy).run();
-			}
+			int port = Integer.parseInt(args[0]);
+			int cacheSize = Integer.parseInt(args[1]);
+			String strategy = args[2];
+			new KVServer(port, cacheSize, strategy);
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");
