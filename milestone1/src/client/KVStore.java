@@ -9,8 +9,12 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 public class KVStore implements KVCommInterface, Runnable {
+	
+	private static Logger logger = Logger.getRootLogger();
 	private Socket clientSocket;
 	private OutputStream output;
 	private InputStream input;
@@ -59,12 +63,18 @@ public class KVStore implements KVCommInterface, Runnable {
 			output = clientSocket.getOutputStream();
 			input = clientSocket.getInputStream();
 			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
+			logger.info("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 		}
 		catch (UnknownHostException e) {
+			logger.error("UnknownHostException occured!", e);
 			throw new UnknownHostException();
-		} catch (IllegalArgumentException e) {
+		} 
+		catch (IllegalArgumentException e) {
+			logger.error("IllegalArgumentException occured!", e);
 			throw new IllegalArgumentException();
-		} catch (Exception e) {
+		} 
+		catch (Exception e) {
+			logger.error("Exception occured!", e);
 			throw new Exception(e);
 		}
 	}
@@ -77,9 +87,11 @@ public class KVStore implements KVCommInterface, Runnable {
 				kvCommunication.send(kvmessage);
 				kvCommunication.receive();
 				kvCommunication.close();
+				logger.debug("Disconnected from server.");
 			}
 			catch (Exception e) {
-				System.out.println("Close Socket Failed!");
+				System.out.println("Error! Close Socket Failed!");
+				logger.error("Close Socket Failed!", e);
 			}
 		}
 	}
