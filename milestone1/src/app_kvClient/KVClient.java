@@ -32,7 +32,7 @@ public class KVClient implements IKVClient {
             kvStore.connect();
         }
         catch (Exception e){
-            System.out.print("HERE !!!!!!!!!");
+            printError("The socket cannot be initialized! ");
         }
     }
 
@@ -64,7 +64,7 @@ public class KVClient implements IKVClient {
             if(kvStore != null){
                 kvStore.disconnect();
             }
-            System.out.println(PROMPT + "Application exit!");
+            System.out.println("Application exit!");
         } 
         else if (tokens[0].equals("connect")){
             if(tokens.length == 3) {
@@ -140,7 +140,7 @@ public class KVClient implements IKVClient {
                     printPossibleLogLevels();
                 } 
                 else {
-                    logger.info(PROMPT + "Log level changed to level " + level);
+                    logger.info("Log level changed to level " + level);
                 }
             } 
             else {
@@ -157,16 +157,16 @@ public class KVClient implements IKVClient {
     }
 
     private void printError(String error){
-        System.out.println(PROMPT + "Error! " +  error);
+        System.out.println("Error! " +  error);
     }
 
     private void printOutput(String out){
-        System.out.println(PROMPT + out);
+        System.out.println(out);
     }
 
     private void printPossibleLogLevels() {
-        System.out.println(PROMPT + "Possible log levels are:");
-        System.out.println(PROMPT + LogSetup.getPossibleLogLevels());
+        System.out.println("Possible log levels are:");
+        System.out.println(LogSetup.getPossibleLogLevels());
     }
 
     private String setLevel(String levelString) {
