@@ -16,14 +16,12 @@ public class KVStore implements KVCommInterface, Runnable {
 	
 	private static Logger logger = Logger.getRootLogger();
 	private Socket clientSocket;
-	private OutputStream output;
-	private InputStream input;
 	private KVCommunicationClient kvCommunication;
 	private String serverAddress;
 	private int serverPort;
 	private int total_clients;		// only used for unit testing
 	private int clientID;			// only used for unit testing
-	private boolean testSuccess;		// only used for unit testing
+	private boolean testSuccess;	// only used for unit testing
 
 	/**
 	 * Initialize KVStore with KVServer address and port.
@@ -60,21 +58,19 @@ public class KVStore implements KVCommInterface, Runnable {
 		try {
 			clientSocket = new Socket(serverAddress, serverPort);
 			kvCommunication = new KVCommunicationClient(clientSocket);
-			output = clientSocket.getOutputStream();
-			input = clientSocket.getInputStream();
 			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 			logger.info("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 		}
 		catch (UnknownHostException e) {
-			logger.error("UnknownHostException occured!", e);
+			logger.error("UnknownHostException occured!");
 			throw new UnknownHostException();
 		} 
 		catch (IllegalArgumentException e) {
-			logger.error("IllegalArgumentException occured!", e);
+			logger.error("IllegalArgumentException occured!");
 			throw new IllegalArgumentException();
 		} 
 		catch (Exception e) {
-			logger.error("Exception occured!", e);
+			logger.error("Exception occured!");
 			throw new Exception(e);
 		}
 	}
@@ -141,4 +137,5 @@ public class KVStore implements KVCommInterface, Runnable {
 			testSuccess = false;
 		}
 	}
+
 }
