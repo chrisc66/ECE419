@@ -13,7 +13,7 @@ import org.apache.log4j.Logger;
 public class KVMessageClass implements KVMessage, Serializable {
 
     private static Logger logger = Logger.getRootLogger();
-    private static final String DELIMITOR = System.getProperty("line.separator") + System.getProperty("line.separator"); // byte value -1 or 10
+    private static final String DELIMITOR = "D" + "\n"; // "D" = 68, "\n" = 10
     private static final int MAX_KEY_SIZE = 20;
     private static final int BUFFER_SIZE = 1024;
     private static final int MAX_BUFF_SIZE = 120 * BUFFER_SIZE;
@@ -35,7 +35,7 @@ public class KVMessageClass implements KVMessage, Serializable {
         System.arraycopy(msgBytes, 0, messageBytes, 0, msgBytes.length);
         
         this.messageString = new String(msgBytes, StandardCharsets.UTF_8);
-        String[] elements = messageString.split(DELIMITOR, 3); 
+        String[] elements = messageString.split(DELIMITOR, 4); 
         this.statusTypeString = elements[0];
         this.key = elements[1];
         this.value = elements[2];
@@ -60,7 +60,7 @@ public class KVMessageClass implements KVMessage, Serializable {
         this.messageString = msgString;
         this.messageBytes = msgString.getBytes(StandardCharsets.UTF_8);
         
-        String[] elements = messageString.split(DELIMITOR, 3); 
+        String[] elements = messageString.split(DELIMITOR, 0); 
         this.statusTypeString = elements[0];
         this.key = elements[1];
         this.value = elements[2];

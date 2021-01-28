@@ -67,32 +67,28 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 		byte[] bufferBytes = new byte[BUFFER_SIZE];
         
 		/* read first char from stream */
-		byte read = (byte) input.read();	
-		boolean reading = true;
+        /* read first char from stream */
+        byte read = 0;  // read from input stream
+        byte prev = 0;  // prev of read
+        byte copy = 0;  // copy of read
+        boolean reading = true;
         int numDeliminator = 0;
-        int count = 0;
-        boolean cont = false;
-        while (reading) {
+        while (reading && numDeliminator != 3) {
 
-            if (read == 10){
-                cont = true;
-                count ++;
-                if ((cont == true) && (count == 2)) {
-                    numDeliminator ++;
-                    count = 0;
-                    cont = false;
-                }
-            } else {
-                count = 0;
-                cont = false;
+            /* read next char from stream */
+            prev = copy;
+            read = (byte) input.read();
+            copy = read;
+
+            // "D" = 68, "\n" = 10
+            if (prev == 68 && copy == 10){
+                numDeliminator ++;
             }
-            if (numDeliminator == 3){
-                break;
-            }
+
             if (read == -1){
                 return new KVMessageClass(StatusType.DISCONNECT, "", "");
             }
-
+            
             /* if buffer filled, copy to msg array */
 			if(index == BUFFER_SIZE) {
 				if (msgBytes == null){
@@ -118,10 +114,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 			/* stop reading is MAX_BUFF_SIZE is reached */
 			if(msgBytes != null && msgBytes.length + index >= MAX_BUFF_SIZE) {
 				reading = false;
-			}
-
-			/* read next char from stream */
-			read = (byte) input.read();
+            }
 		}
 
         if (msgBytes == null){
