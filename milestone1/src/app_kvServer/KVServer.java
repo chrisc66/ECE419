@@ -96,7 +96,7 @@ public class KVServer implements IKVServer, Runnable {
 			case "FIFO":
 				return IKVServer.CacheStrategy.FIFO;
 			default:
-				logger.error("Undefined use of IKVServer.CacheStrategy, setting to None.");
+				logger.debug("Undefined use of IKVServer.CacheStrategy, setting to None.");
 				return IKVServer.CacheStrategy.None;
 		}
 	}
@@ -121,7 +121,7 @@ public class KVServer implements IKVServer, Runnable {
 	public String getKV(String key) throws Exception{
 		String value = diskStorage.get(key);
 		if (value == null){
-			logger.error("Key " + key + " cannot be found on server");
+			logger.debug("Key " + key + " cannot be found on server");
 			throw new Exception("Key cannot be found on server");
 		}
 		return value;
@@ -136,7 +136,7 @@ public class KVServer implements IKVServer, Runnable {
 	public void putKV(String key, String value) throws Exception{
 		boolean success = diskStorage.put(key, value);
 		if (success == false){
-			logger.error("Unable to put key value pair into storage. Key = " + key + ", Value = " + value);
+			logger.debug("Unable to put key value pair into storage. Key = " + key + ", Value = " + value);
 			throw new Exception("Unable to put key value pair into storage.");
 		}
 	}
