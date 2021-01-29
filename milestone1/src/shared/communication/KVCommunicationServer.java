@@ -23,7 +23,6 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     
     private static Logger logger = Logger.getRootLogger();
     private static final int BUFFER_SIZE = 1024;
-    private static final int MAX_BUFF_SIZE = 128 * BUFFER_SIZE;
 
     private Socket clientSocket;
     private KVServer kvServer;
@@ -109,11 +108,6 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 			/* only read valid characters, i.e. letters and constants */
 			bufferBytes[index] = read;
 			index++;
-			
-			/* stop reading is MAX_BUFF_SIZE is reached */
-			if(msgBytes != null && msgBytes.length + index >= MAX_BUFF_SIZE) {
-				reading = false;
-            }
 		}
 
         if (msgBytes == null){

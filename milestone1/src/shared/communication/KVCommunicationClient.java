@@ -22,9 +22,7 @@ import org.apache.log4j.Logger;
 public class KVCommunicationClient implements IKVCommunication {
     
     private static Logger logger = Logger.getRootLogger();
-    private static final int MAX_KEY_SIZE = 20;
     private static final int BUFFER_SIZE = 1024;
-    private static final int MAX_BUFF_SIZE = 120 * BUFFER_SIZE;
 
     private Socket clientSocket;
     private boolean open;
@@ -107,11 +105,6 @@ public class KVCommunicationClient implements IKVCommunication {
 			/* only read valid characters, i.e. letters and constants */
 			bufferBytes[index] = read;
 			index++;
-			
-			/* stop reading is MAX_BUFF_SIZE is reached */
-			if(msgBytes != null && msgBytes.length + index >= MAX_BUFF_SIZE) {
-				reading = false;
-            }
 		}
         
         if (msgBytes == null){
