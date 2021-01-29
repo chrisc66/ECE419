@@ -106,9 +106,9 @@ public class AdditionalTest extends TestCase {
 		String s = new String(r);
 
 		DiskStorage DB = new DiskStorage();
-		DB.put("k","test");
+		DB.put("k",s);
 		for (int i = 0; i < requestNum; i ++){
-			assertEquals("test", DB.get("k"));
+			assertEquals(s, DB.get("k"));
 		}
 
 	}
