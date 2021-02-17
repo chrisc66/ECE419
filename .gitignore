@@ -1,13 +1,13 @@
 # IDE configurations
 
-.DS_Store/
+.DS_Store
 .vscode/
 .idea/
-milestone*/.DS_Store/
+milestone*/.DS_Store
 milestone*/.vscode/
 milestone*/.idea/
 
-# build files
+# build and run files
 
 *.iml
 *.MF
@@ -27,7 +27,9 @@ milestone*/data/
 
 # Dataset 20150507
 milestone*/enron_mail_20150507.tar.gz
+milestone*/maildir/
 
 # Zookeeper v3.4.11
 milestone*/zookeeper-3.4.11.tar.gz
+milestone*/zookeeper-3.4.11/
 
