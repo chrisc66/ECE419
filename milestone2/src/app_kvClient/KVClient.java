@@ -3,11 +3,9 @@ package app_kvClient;
 import client.KVCommInterface;
 import client.KVStore;
 import logger.LogSetup;
-import shared.messages.KVMessage;
-import shared.messages.KVMessageClass;
-
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import shared.messages.KVMessage;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -104,8 +102,12 @@ public class KVClient implements IKVClient {
                             value.append(" ");
                         }
                     }
-                    kvStore.put(key, value.toString());
+                    KVMessage msg = kvStore.put(key, value.toString());
                     logger.info("Sending PUT message, " + "Key: " + key + ", Value: " + value.toString());
+                    if (msg.getStatus() != KVMessage.StatusType.PUT_SUCCESS || msg.getStatus() != KVMessage.StatusType.DELETE_SUCCESS) {
+                        printError(msg.getStatusString());
+                        logger.error(msg.getStatusString());
+                    }
                 } 
                 else {
                     printError("Not connected to server!");
@@ -122,9 +124,14 @@ public class KVClient implements IKVClient {
                 if(kvStore != null && kvStore.isRunning()){
                     String key = tokens[1];
                     KVMessage msg = kvStore.get(key);
-                    printOutput("Key: " + msg.getKey() + ", Value: " + msg.getValue());
-                    logger.info("Sending GET message, " + "Key: " + msg.getKey() + ", Value: " + msg.getValue());
-                } 
+                    if (msg.getStatus() != KVMessage.StatusType.GET_SUCCESS) {
+                        printError(msg.getStatusString());
+                        logger.error(msg.getStatusString());
+                    } else {
+                        printOutput("Key: " + msg.getKey() + ", Value: " + msg.getValue());
+                        logger.info("Sending GET message, " + "Key: " + msg.getKey() + ", Value: " + msg.getValue());
+                    }
+                }
                 else {
                     printError("Not connected to server!");
                     logger.error("Not connected to server!");

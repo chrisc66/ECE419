@@ -1,5 +1,7 @@
 package shared.messages;
 
+import java.util.List;
+
 /**
  * Represents a <code>KVMessage</code> used in server and client connection (KVConnection)
  * 
@@ -32,7 +34,11 @@ public interface KVMessage {
 		DELETE_SUCCESS, /* 08 Delete - request successful */
 		DELETE_ERROR, 	/* 09 Delete - request successful */
 		/* Disconnect message */
-		DISCONNECT		/* 10 Disconnect - close connection */
+		DISCONNECT,		/* 10 Disconnect - close connection */
+
+		SERVER_STOPPED, /* 11  Server is stopped, no requests are processed */
+		SERVER_WRITE_LOCK, /* 12 Server locked for write, only get possible */
+		SERVER_NOT_RESPONSIBLE /* 13 Request not successful, server is not responsible for key */
 	}
 
 	/**
@@ -97,6 +103,13 @@ public interface KVMessage {
 	 * @return the content of this message in String format.
 	 */
 	public String getMessage();
+
+	/**
+	 * Returns the updated metadata
+	 *
+	 * @return the updated metadata
+	 */
+	public List<Metadata> getMetadata();
 
 	// /**
     //  * Parse the message string and obtain targeted element. 
