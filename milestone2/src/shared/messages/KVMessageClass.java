@@ -1,11 +1,14 @@
 package shared.messages;
 
-import java.util.Arrays;
+import org.apache.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Represents a <code>KVMessage</code> instance used in server and client connection (KVConnection)
@@ -112,7 +115,7 @@ public class KVMessageClass implements KVMessage, Serializable {
     /**
      * Constructor 4: Constructing a new KVMessageClass.
      * 
-     * @param statusType first element, message status type string.
+     * @param statusTypeString first element, message status type string.
      * @param key second element, key string.
      * @param value third element, value string.
      */
@@ -164,6 +167,12 @@ public class KVMessageClass implements KVMessage, Serializable {
                 return StatusType.DELETE_ERROR;
             case "DISCONNECT":
                 return StatusType.DISCONNECT;
+            case "SERVER_STOPPED":
+                return StatusType.SERVER_STOPPED;
+            case "SERVER_WRITE_LOCK":
+                return StatusType.SERVER_WRITE_LOCK;
+            case "SERVER_NOT_RESPONSIBLE":
+                return StatusType.SERVER_NOT_RESPONSIBLE;
             default:
                 return StatusType.UNDEFINED;
         }
@@ -195,6 +204,12 @@ public class KVMessageClass implements KVMessage, Serializable {
                 return "DELETE_ERROR";
             case DISCONNECT:
                 return "DISCONNECT";
+            case SERVER_STOPPED:
+                return "SERVER_STOPPED";
+            case SERVER_WRITE_LOCK:
+                return "SERVER_WRITE_LOCK";
+            case SERVER_NOT_RESPONSIBLE:
+                return "SERVER_NOT_RESPONSIBLE";
             default:
                 return "UNDEFINED";
         }
@@ -214,6 +229,20 @@ public class KVMessageClass implements KVMessage, Serializable {
 
     public String getMessage(){
         return Arrays.toString(messageBytes);
+    }
+
+    public List<Metadata> getMetadata(){
+        if (statusTypeString != "SERVER_NOT_RESPONSIBLE") {
+            return null;
+        }
+        JSONArray arr = new JSONArray(value);
+        ArrayList<Metadata> metadata_list = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject obj = arr.getJSONObject(i);
+            Metadata temp = new Metadata (obj.getString("host"), obj.getInt("port"), obj.getBigInteger("start"), obj.getBigInteger("stop"));
+            metadata_list.add(temp);
+        }
+        return metadata_list;
     }
 
 }
