@@ -1,16 +1,17 @@
 package client;
 
-import shared.messages.KVMessage;
+import org.apache.log4j.Logger;
 import shared.communication.KVCommunicationClient;
+import shared.messages.KVMessage;
 import shared.messages.KVMessageClass;
+import shared.messages.Metadata;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 public class KVStore implements KVCommInterface, Runnable {
 	
@@ -19,6 +20,8 @@ public class KVStore implements KVCommInterface, Runnable {
 	private KVCommunicationClient kvCommunication;
 	private String serverAddress;
 	private int serverPort;
+//	private MessageDigest md;//getInstance(String algorithm)
+	private List<Metadata> metadata;
 	private int total_clients;		// only used for unit testing
 	private int clientID;			// only used for unit testing
 	private boolean testSuccess;	// only used for unit testing
@@ -56,6 +59,7 @@ public class KVStore implements KVCommInterface, Runnable {
 	@Override
 	public void connect() throws Exception {
 		try {
+//			md = MessageDigest.getInstance("MD5");
 			clientSocket = new Socket(serverAddress, serverPort);
 			kvCommunication = new KVCommunicationClient(clientSocket);
 			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
@@ -68,7 +72,7 @@ public class KVStore implements KVCommInterface, Runnable {
 		catch (IllegalArgumentException e) {
 			logger.error("IllegalArgumentException occured!");
 			throw new IllegalArgumentException();
-		} 
+		}
 		catch (Exception e) {
 			logger.error("Exception occured!");
 			throw new Exception(e);
@@ -96,7 +100,24 @@ public class KVStore implements KVCommInterface, Runnable {
 	public KVMessage put(String key, String value) throws Exception {
 		KVMessageClass kvmessage = new KVMessageClass(KVMessage.StatusType.PUT, key, value);
 		kvCommunication.send(kvmessage);
-		return kvCommunication.receive();
+		KVMessage msg = kvCommunication.receive();
+		if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
+			metadata = msg.getMetadata();
+			BigInteger key_bi = mdKey(key);
+			for (int i = 0; i <metadata.size(); i++ ) {
+				Metadata obj = metadata.get(i);
+				if (key_bi.compareTo(obj.start) == 1 && key_bi.compareTo(obj.stop) != 1) {
+					disconnect();
+					this.serverAddress = obj.serverAddress;
+					this.serverPort = obj.port;
+					connect();
+					break;
+				}
+			}
+			kvCommunication.send(kvmessage);
+			msg = kvCommunication.receive();
+		}
+		return msg;
 	}
 
 	@Override
@@ -135,6 +156,23 @@ public class KVStore implements KVCommInterface, Runnable {
 		}
 		catch (Exception e){
 			testSuccess = false;
+		}
+	}
+
+	/**
+	 * helper function for getting MD5 hash key
+	 * may need to move to some shared class for being visible for both client and server
+	 */
+
+	public BigInteger mdKey (String key) throws NoSuchAlgorithmException {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] md_key = md.digest(key.getBytes());
+			BigInteger md_key_bi = new BigInteger(1, md_key);
+			return md_key_bi;
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("NoSuchAlgorithmException occured!");
+			throw new NoSuchAlgorithmException();
 		}
 	}
 
