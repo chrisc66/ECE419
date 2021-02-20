@@ -30,9 +30,11 @@ public class ECSConsistantHashRing {
             logger.error("Please reset the list of input server Names");
             return;
         }
+
         for(int i=0; i < hashRingSize; i++){
             /** Assume server name are in the format of ip:port **/
             String serverName = inputServerNames.get(i);
+
 
             String [] addr_port = serverName.split(":");
             String addr = addr_port[0];
@@ -40,13 +42,12 @@ public class ECSConsistantHashRing {
 
             BigInteger hashStart = NametoHashConverter(serverName);
 
-
-
             ECSNode newNode = new ECSNode(serverName,addr,Integer.parseInt(port),hashStart.toString());
             HashRing.put(hashStart.toString(),newNode);
             keyArray.add(hashStart);
         }
         Collections.sort(keyArray);
+
         for(int i=0; i < hashRingSize; i++){
             BigInteger curServerKey = keyArray.get(i);
             if(!curServerKey.toString().equals(HashRing.get(curServerKey.toString()).getCurNodeIDStart())){

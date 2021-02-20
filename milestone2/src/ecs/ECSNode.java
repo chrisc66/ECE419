@@ -6,18 +6,18 @@ public class ECSNode implements IECSNode{
     private String nodeName;
     private String nodeHost;
     private String preNodeID;
-    private String curNodeIDStart;
+    private String curNodeID;
     private String nextNodeID;
     private int nodePort;
     private String[] hashRange;
 
     public ECSNode(String nodeName,String nodeHost, int nodePort, String curNodeIDStart, String[] hashRange){
 
-        nodeName = nodeName;
-        nodeHost = nodeHost;
-        nodePort = nodePort;
-        hashRange = hashRange;
-        curNodeIDStart = curNodeIDStart;
+        this.nodeName = nodeName;
+        this.nodeHost = nodeHost;
+        this.nodePort = nodePort;
+        this.hashRange = hashRange;
+        this.curNodeID = curNodeIDStart;
 
         preNodeID = null;
         nextNodeID = null;
@@ -25,27 +25,27 @@ public class ECSNode implements IECSNode{
 
     public ECSNode(String nodeName,String nodeHost, int nodePort, String curNodeIDStart){
 
-        nodeName = nodeName;
-        nodeHost = nodeHost;
-        nodePort = nodePort;
-        curNodeIDStart = curNodeIDStart;
-        hashRange = null;
+        this.nodeName = nodeName;
+        this.nodeHost = nodeHost;
+        this.nodePort = nodePort;
+        this.curNodeID = curNodeIDStart;
+        this.hashRange = null;
 
-        preNodeID = null;
-        nextNodeID = null;
+        this.preNodeID = null;
+        this.nextNodeID = null;
     }
 
     public ECSNode(String nodeName,String nodeHost, int nodePort,String curNodeIDStart,
                    String[] hashRange, String preNodeID, String nextNodeID){
 
-        nodeName = nodeName;
-        nodeHost = nodeHost;
-        nodePort = nodePort;
-        hashRange = hashRange;
-        curNodeIDStart = curNodeIDStart;
+        this.nodeName = nodeName;
+        this.nodeHost = nodeHost;
+        this.nodePort = nodePort;
+        this.hashRange = hashRange;
+        this.curNodeID = curNodeIDStart;
 
-        preNodeID = preNodeID;
-        nextNodeID = nextNodeID;
+        this.preNodeID = preNodeID;
+        this.nextNodeID = nextNodeID;
     }
 
     public void updateNodeDataBehind(String endRange){
@@ -67,7 +67,7 @@ public class ECSNode implements IECSNode{
     }
 
     public String getCurNodeIDStart() {
-        return curNodeIDStart;
+        return curNodeID;
     }
 
     public String getNextNodeID() {

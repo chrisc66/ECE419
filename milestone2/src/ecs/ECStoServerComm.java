@@ -4,6 +4,7 @@ import client.KVCommInterface;
 import shared.messages.KVMessage;
 
 public class ECStoServerComm implements KVCommInterface {
+
     @Override
     public void connect() throws Exception {
 
