@@ -104,8 +104,10 @@ public class KVClient implements IKVClient {
                     }
                     KVMessage msg = kvStore.put(key, value.toString());
                     logger.info("Sending PUT message, " + "Key: " + key + ", Value: " + value.toString());
-                    if (msg.getStatus() != KVMessage.StatusType.PUT_SUCCESS || msg.getStatus() != KVMessage.StatusType.DELETE_SUCCESS) {
-                        printError(msg.getStatusString());
+                    if (msg.getStatus() == KVMessage.StatusType.GET_ERROR || 
+                        msg.getStatus() == KVMessage.StatusType.PUT_ERROR ||
+                        msg.getStatus() == KVMessage.StatusType.DELETE_ERROR){
+                        printError("Received message: " + msg.getStatusString());
                         logger.error(msg.getStatusString());
                     }
                 } 
@@ -125,7 +127,7 @@ public class KVClient implements IKVClient {
                     String key = tokens[1];
                     KVMessage msg = kvStore.get(key);
                     if (msg.getStatus() != KVMessage.StatusType.GET_SUCCESS) {
-                        printError(msg.getStatusString());
+                        printError("Received message: " + msg.getStatusString());
                         logger.error(msg.getStatusString());
                     } else {
                         printOutput("Key: " + msg.getKey() + ", Value: " + msg.getValue());

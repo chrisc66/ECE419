@@ -25,7 +25,7 @@ public class AdditionalTest extends TestCase {
 
 		String valTest_1 = "mmmmmmm";
 
-		DiskStorage DB = new DiskStorage();
+		DiskStorage DB = new DiskStorage("ip:port");
 
 		DB.put(keyTest, valTest);
 		String Val = DB.get(keyTest);
@@ -52,7 +52,7 @@ public class AdditionalTest extends TestCase {
 		String keyTest = "dummy";
 		String valTest = "dddddddddddd";
 
-		DiskStorage DB = new DiskStorage();
+		DiskStorage DB = new DiskStorage("ip:port");
 		try {
 			DB.put(keyTest, valTest);
 		}catch (Exception e){
@@ -105,7 +105,7 @@ public class AdditionalTest extends TestCase {
 		random.nextBytes(r);
 		String s = new String(r);
 
-		DiskStorage DB = new DiskStorage();
+		DiskStorage DB = new DiskStorage("ip:port");
 		DB.put("k",s);
 		for (int i = 0; i < requestNum; i ++){
 			assertEquals(s, DB.get("k"));
