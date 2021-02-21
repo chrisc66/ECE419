@@ -335,11 +335,13 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
      * check if request key is in current server hashing range
      */
     public boolean checkKey(String key) throws NoSuchAlgorithmException {
-        BigInteger key_hash = mdKey(key);
-        if (key_hash.compareTo(KVServer.serverMetadata.start) == 1 && key_hash.compareTo(KVServer.serverMetadata.stop) != 1) {
-            return true;
-        }
-        return false;
+        // BigInteger key_hash = mdKey(key);
+        // if (key_hash.compareTo(kvServer.serverMetadata.start) == 1 && key_hash.compareTo(kvServer.serverMetadata.stop) != 1) {
+        //     return true;
+        // }
+        // return false;
+        // TODO implement metadata
+        return true;
     }
 
     /**

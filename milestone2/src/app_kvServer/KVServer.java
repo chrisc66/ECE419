@@ -8,24 +8,17 @@ import DiskStorage.DiskStorage;
 
 import java.util.Map;
 import java.util.ArrayList;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.UnknownHostException;
-import java.net.BindException;
-import java.net.Socket;
+import java.util.concurrent.CountDownLatch;
+import java.net.*;
 import java.io.IOException;
 import java.io.File;
 
+import org.apache.zookeeper.*;
+import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.data.Stat;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import shared.communication.KVCommunicationServer;
-import shared.messages.Metadata;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.*;
-import java.util.ArrayList;
-import java.util.Map;
 
 public class KVServer implements IKVServer, Runnable {
 
@@ -47,14 +40,21 @@ public class KVServer implements IKVServer, Runnable {
 	private static final String filePreFix = "persistanceDB.properties";
 
 	// M2: Distributed server config
-	public static String serverName;
-	public static Metadata serverMetadata;	// metadata for itself
-	public static ArrayList<Metadata> metadataList;
-	public static boolean writeLock;
-
+	public static ArrayList<Metadata> metadataList = new ArrayList<Metadata>();
+	private Metadata serverMetadata;	// metadata for itself
+	private boolean distributed;
+	private String serverName;
+	private boolean writeLock;
+	private String zkHostname;
+    private int zkPort;
+    private static final int zkTimeout = 20000;
+	private static final String zkRootNodePath = "/StorageServerRoot";
+	private ZooKeeper zk;
 
 	/**
-	 * Start KV Server at given port
+	 * Start KV Server at given port. 
+	 * Note: this constructor creates a non-distributed KVServer object. 
+	 * 
 	 * @param port given port for storage server to operate
 	 * @param cacheSize specifies how many key-value pairs the server is allowed
 	 *           to keep in-memory
@@ -64,23 +64,96 @@ public class KVServer implements IKVServer, Runnable {
 	 *           and "LFU".
 	 */
 	public KVServer(int port, int cacheSize, String strategy) {
+		this.distributed = false;
 		this.serverSocket = null;
 		this.port = port;
 		this.cacheSize = cacheSize;
 		this.clientThreads = new ArrayList<Thread>();
 		this.serverName = getHostname()+":"+getPort();
-		if (storageFileExist()){
+		if (storageFileExist())
 			this.diskStorage = new DiskStorage(filePreFix, serverName);
-		}
-		else{
+		else
 			this.diskStorage = new DiskStorage(serverName);
-		}
-		this.serverMetadata = null;
-		this.metadataList = null;
-		this.writeLock = false;
-		
+		// Create a new thread that start runing KVServer
 		Thread clientThread = new Thread(this);
 		clientThread.start();
+	}
+
+	/**
+	 * Start KV Server with ZooKeeper instance.
+	 * Note: this constructor creates a distributed KVServer object. 
+	 * 
+	 * @param serverName KVServer name in the form of ip:port
+	 * @param zkPort ZooKeeper port
+	 * @param zkHostname ZooKeeper host name
+	 */
+	public KVServer(String serverName, int zkPort, String zkHostname){
+		this.distributed = true;
+		this.serverSocket = null;
+		this.port = Integer.parseInt(serverName.split(":")[2]);	// port is contained in server name
+		this.cacheSize = 0;
+		this.clientThreads = new ArrayList<Thread>();
+		this.serverMetadata = null;
+		this.writeLock = false;
+		this.zkHostname = zkHostname;
+		this.zkPort = zkPort;
+		// Persistent disk storage
+		if (storageFileExist())
+			this.diskStorage = new DiskStorage(filePreFix, serverName);
+		else
+			this.diskStorage = new DiskStorage(serverName);
+		// ZooKeeper client
+		try{
+            final CountDownLatch latch = new CountDownLatch(1);
+			this.zk = new ZooKeeper(zkHostname+":"+zkPort, zkTimeout, new Watcher(){
+                @Override
+                public void process(WatchedEvent event) {
+                    if (event.getState() == KeeperState.SyncConnected)
+                        latch.countDown();
+                }
+            });
+            latch.await();
+        } catch (IOException | InterruptedException e){
+            logger.error(e);
+        }
+		// ZNode on ECS ZooKeeper server
+		try {
+			if (zk.exists(zkRootNodePath+"/"+serverName, false) == null) {
+				zk.create(zkRootNodePath+"/"+serverName, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+			}
+		} catch (KeeperException | InterruptedException e) {
+			logger.error(e);
+		}
+		// Metadata
+		try {
+			final String zkNodePath = zkRootNodePath+"/"+serverName;
+			byte[] kvAdminMsgBytes = zk.getData(zkNodePath, new Watcher() {
+				// handle hashRing update
+				public void process(WatchedEvent we) {
+					if (!running) return;
+					try {
+						byte[] kvAdminMsgBytes = zk.getData(zkNodePath, this, null);
+						setMetadata(kvAdminMsgBytes);
+					} catch (KeeperException | InterruptedException e) {
+						logger.error(e);
+					}
+				}
+			}, null);
+			setMetadata(kvAdminMsgBytes);
+		} catch (KeeperException | InterruptedException e) {
+			logger.error(e);
+		}
+		// Run KVServer after creation
+		this.run();
+	}
+
+	/** 
+	 * Update metadata list and servermetadata from byte array.
+	 */
+	public void setMetadata(byte[] kvAdminMsgBytes){
+		// TODO: set metadata list using KVAdminMessage bytes
+		// this.metadataList = 
+		// this.serverMetadata = 
 	}
 
 	private boolean storageFileExist(){

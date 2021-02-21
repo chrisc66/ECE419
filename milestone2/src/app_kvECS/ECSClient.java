@@ -3,9 +3,16 @@ package app_kvECS;
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 import ecs.*;
 import logger.LogSetup;
+
+import org.apache.zookeeper.*;
+import org.apache.zookeeper.server.*;
+import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.data.Stat;
 import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
@@ -13,29 +20,75 @@ public class ECSClient implements IECSClient{
 
     private static Logger logger = Logger.getRootLogger();
     private ECSConsistantHashRing hashRingDB;
-    private ECStoServerComm commModule;
     private String sourceConfigPath;
-    private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>();
+    private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>(); // all servers in conf, string = ip:port
     private ECSUI ECSClientUI;
-    private List<String> curServers = new ArrayList<>();
+    private List<String> curServers = new ArrayList<>();    // running INUSE
     private Object ExceptionInInitializerError;
+    
+    private static final String zkRootNodePath = "/StorageServerRoot";
+    private static final String serverJar = "m2-server.jar";
+    private static final int zkPort = 2181;
+    private static final String zkHost = "localhost";
+    private static final int zkTimeout = 20000;
+    private ZooKeeper zk;
 
     public ECSClient(String configFilePath){
-        sourceConfigPath=configFilePath;
+        sourceConfigPath = configFilePath;
         loadDataFromConfigFile();
-        commModule = new ECStoServerComm(); //TODO
     }
 
     public void ECSInitialization(int count) {
         try{
-
             ECSClientUI = new ECSUI();
             hashRingDB = new ECSConsistantHashRing(addNodesByName(count),true);
-
+            initializeZooKeeper();
+            // TODO call addNodes
+            // addNodes(count, "NONE", 0);
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
+    }
 
+    private void initializeZooKeeper(){
+        // Create ZooKeeper server instance and run in a separate thread
+        Runnable zkServerRun = new Runnable(){
+            public void run(){
+                try{
+                    String zkServerConfPath = "zookeeper-3.4.11/conf/zoo.cfg";
+                    ServerConfig config = new ServerConfig();
+                    config.parse(zkServerConfPath);
+                    ZooKeeperServerMain zkServer = new ZooKeeperServerMain();
+                    zkServer.runFromConfig(config);
+                } catch (ConfigException | IOException e){}
+            }
+        };
+        Thread zkServer = new Thread(zkServerRun);
+        zkServer.start();
+
+        // Create ZooKeeper client instance
+        try {
+            final CountDownLatch latch = new CountDownLatch(1);
+            this.zk = new ZooKeeper(zkHost+":"+zkPort, zkTimeout, new Watcher(){
+                @Override
+                public void process(WatchedEvent event) {
+                    if (event.getState() == KeeperState.SyncConnected)
+                        latch.countDown();
+                }
+            });
+            latch.await();
+        } catch (IOException | InterruptedException e){
+            logger.error(e);
+        }
+
+        // Create storage server root zNode in ZooKeeper
+        try {
+            if (zk.exists(zkRootNodePath, false) == null) {
+                zk.create(zkRootNodePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+        } catch (KeeperException | InterruptedException e) {
+            logger.error(e);
+        }
     }
 
     private void loadDataFromConfigFile(){
@@ -48,7 +101,7 @@ public class ECSClient implements IECSClient{
                     logger.error("bad config file format");
                     throw (Throwable) ExceptionInInitializerError;
                 }
-                serverStatusMap.put(dataArray[1]+":"+dataArray[2], IECSNode.STATUS.OFFLine);
+                serverStatusMap.put(dataArray[1]+":"+dataArray[2], IECSNode.STATUS.OFFLINE);
             }
 
         } catch (FileNotFoundException e) {
@@ -90,37 +143,39 @@ public class ECSClient implements IECSClient{
             addServerName.add(newServerName);
         }
         return addServerName;
-
     }
+
     @Override
     public boolean start() {
-        // TODO
+        // TODO: start all KVServers 
+        // KVServers responds to both ECS and KVClient
+        // Starts the storage service by calling start() on all KVServer instances that participate in the service
         return false;
     }
 
     @Override
     public boolean stop() {
-        // TODO
+        // TODO: stop all KVServers
+        // KVServers still responds to ECS but not KVClient
+        // Stops the service; all participating KVServers are stopped for processing client requests but the processes remain running
         return false;
     }
 
     @Override
     public boolean shutdown() {
-        // TODO
+        // TODO: shutdown all KVServers
+        // Stops all server instances and exits the remote processes
         return false;
     }
 
     @Override
     public IECSNode addNode(String cacheStrategy, int cacheSize) {
-        // TODO
         List<IECSNode> newNode = (List<IECSNode>) addNodes(1,cacheStrategy,cacheSize);
         return newNode.get(0);
     }
 
     @Override
     public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
-        // TODO
-
         // select x number of servers from the avalibale server list
         if (curServers.size() == serverStatusMap.size()){
             logger.error("All servers in the configurations are deployed");
@@ -138,27 +193,52 @@ public class ECSClient implements IECSClient{
                 ECSNode newNode = this.hashRingDB.getECSNodeFromName(newServerName);
                 addServerName.add(newNode);
                 this.hashRingDB.addNewNodeByNode(newNode);
-                /** TODO: needs to initialize server with SSH here as well * */
-
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (Throwable throwable) {
                 throwable.printStackTrace();
             }
+            // ssh start KVServer instance remotely
+            String startServer = "java -jar " + serverJar + " " + newServerName + " " + zkPort + " "  + zkHost;
+            String sshStartServer = "ssh -o StrictHostKeyChecking=no -n " + zkHost + " nohup " + startServer + " &";
+            try {
+                Process p = Runtime.getRuntime().exec(sshStartServer);
+                logger.info("Creating KVServer with command: " + sshStartServer);
+            } catch (IOException e) {
+                logger.error(e);
+                // TODO remove node
+            }
         }
-
         return addServerName;
     }
 
     @Override
     public Collection<IECSNode> setupNodes(int count, String cacheStrategy, int cacheSize) {
-        // TODO
+        if (count > serverStatusMap.size()) 
+            return null;
+        // TODO: send metadata to all added nodes using zk.setData
+        
+        // Maybe this is a good location for
+        // TODO: watch child nodes
+		for (Map.Entry<String,IECSNode.STATUS> serverEntry : serverStatusMap.entrySet()){
+            String serverName = serverEntry.getKey();
+            try {
+                zk.getChildren(zkRootNodePath+"/"+serverName, new Watcher () {
+                    @Override
+                    public void process(WatchedEvent event) {
+                        // TODO: check if any child znode is missing
+                    }
+                }, null);
+            } catch (KeeperException | InterruptedException e) {
+                logger.error(e);
+            }
+        }
         return null;
     }
 
     @Override
     public boolean awaitNodes(int count, int timeout) throws Exception {
-        // TODO
+        // TODO: wait until all nodes response or timeout
         return false;
     }
 
@@ -179,13 +259,11 @@ public class ECSClient implements IECSClient{
 
     @Override
     public Map<String, IECSNode> getNodes() {
-        // TODO
         return hashRingDB.getHashRing();
     }
 
     @Override
     public IECSNode getNodeByKey(String Key) {
-        // TODO
         return hashRingDB.getHashRing().get(Key);
     }
 
