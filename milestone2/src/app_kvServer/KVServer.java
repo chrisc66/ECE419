@@ -1,9 +1,12 @@
 package app_kvServer;
 
 import shared.communication.KVCommunicationServer;
+import shared.messages.KVMessage;
+import shared.messages.Metadata;
 import logger.LogSetup;
 import DiskStorage.DiskStorage;
 
+import java.util.Map;
 import java.util.ArrayList;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -18,17 +21,28 @@ import org.apache.log4j.Logger;
 
 public class KVServer implements IKVServer, Runnable {
 
-	private static final String dir = "./data";
-	private static final String fileName = "persistanceDB.properties";
 	private static Logger logger = Logger.getRootLogger();
 
+	// M1: KVServer config
 	private ServerSocket serverSocket;
 	private int port;
 	private int cacheSize;
 	private String strategy;
 	private boolean running;
+
+	// M1: KVClient connections
 	private ArrayList<Thread> clientThreads;
+
+	// M1: KVServer disk persistent storage
 	private DiskStorage diskStorage;
+	private static final String dir = "./data";
+	private static final String filePreFix = "persistanceDB.properties";
+
+	// M2: Distributed server config
+	Metadata serverMetadata;	// metadata for itself
+	String serverName;
+	ArrayList<Metadata> metadataList;
+	private boolean writeLock;
 
 	/**
 	 * Start KV Server at given port
@@ -45,13 +59,17 @@ public class KVServer implements IKVServer, Runnable {
 		this.port = port;
 		this.cacheSize = cacheSize;
 		this.clientThreads = new ArrayList<Thread>();
+		this.serverName = getHostname()+":"+getPort();
 		if (storageFileExist()){
-			this.diskStorage = new DiskStorage(fileName);
+			this.diskStorage = new DiskStorage(filePreFix, serverName);
 		}
 		else{
-			this.diskStorage = new DiskStorage();
+			this.diskStorage = new DiskStorage(serverName);
 		}
-
+		this.serverMetadata = null;
+		this.metadataList = null;
+		this.writeLock = false;
+		
 		Thread clientThread = new Thread(this);
 		clientThread.start();
 	}
@@ -62,7 +80,7 @@ public class KVServer implements IKVServer, Runnable {
 			return false;
 		}
 		else {
-			File dummyFile = new File(dir+'/'+fileName);
+			File dummyFile = new File(dir+'/'+filePreFix+serverName);
 			return dummyFile.exists();
 		}
 	}
@@ -211,6 +229,25 @@ public class KVServer implements IKVServer, Runnable {
 			logger.error("Error! Unable to close socket on port: " + port, e);
 		}
 	}
+
+	@Override
+	public ArrayList<Metadata> getMetaData(){
+		return metadataList;
+	}
+
+	@Override
+	public Map<String, String> getKVOutOfRange(){
+		return diskStorage.getKVOutOfRange(serverMetadata.start, serverMetadata.stop);
+	}
+
+	@Override
+	public void aquireWriteLock(){ writeLock = true; }
+
+	@Override
+	public void releaseWriteLock(){ writeLock = false; }
+
+	@Override
+	public boolean getWriteLock(){ return writeLock; }
 
 	public static void main(String[] args) throws IOException {
 		try {

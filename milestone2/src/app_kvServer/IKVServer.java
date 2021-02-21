@@ -1,6 +1,14 @@
 package app_kvServer;
 
+import java.util.ArrayList;
+import java.util.Map;
+
+import shared.messages.Metadata;
+
 public interface IKVServer {
+
+    /******************** Milestone 1 ********************/
+
     public enum CacheStrategy {
         None,
         LRU,
@@ -94,4 +102,36 @@ public interface IKVServer {
      * Gracefully stop the server, can perform any additional actions
      */
     public void close();
+
+    /******************** Milestone 2 ********************/
+
+    /**
+     * Get metadata (information of other servers) for distributed servers. 
+     */
+    public ArrayList<Metadata> getMetaData();
+
+    /**
+     * Get the KV pairs that are stored but not responsible by the KVServer.
+     * NOTE: this function is used to determine which part of data need to be transferred.
+     * 
+     * @return map of out-of-ranged KV pairs
+     */
+    public Map<String, String> getKVOutOfRange();
+
+    /** 
+     * Get write lock status of KVServer. 
+     * 
+     * @return writeLock representing if the server is writable.
+     */
+    public boolean getWriteLock();
+    
+    /** 
+     * Aquires write lock of KVServer. 
+     */
+    public void aquireWriteLock();
+
+    /** 
+     * Release write lock of KVServer. 
+     */
+    public void releaseWriteLock();
 }

@@ -6,6 +6,7 @@ import shared.messages.KVMessageClass;
 import shared.messages.KVMessage.StatusType;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
@@ -164,7 +165,21 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         String sendMsgKey = message.getKey();   // return the same key as received message
         String sendMsgValue = "";
 
+        // TODO handle SERVER_STOPPED
+
+        // check if server is write locked
+        if (kvServer.getWriteLock()){
+            sendMsgType = StatusType.SERVER_WRITE_LOCK;
+            return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
+        }
+
+        // TODO handle SERVER_NOT_RESPONSIBLE
+
         switch(message.getStatus()){
+            // TODO server return messages
+            // SERVER_STOPPED
+            // SERVER_WRITE_LOCK
+            // SERVER_NOT_RESPONSIBLE
             case GET: 
                 // Aquire key-value pair from the server
                 try {
@@ -229,6 +244,40 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 open = false;
                 sendMsgType = StatusType.DISCONNECT;
                 logger.info("PUT_SUCCESS: Value is stored on server");
+                break;
+            /** 
+             * Below messages are for kv-pair data transfer between two KVServers (sender and receiver)
+             * 1. Sender sends data transfer start, receiver sends back acknowledgement
+             * 2. Sender sends data transfer content (one pair at a time), receiver sends back acknowledgement
+             * 3. Sender sends data transfer stop, receiver sends back acknowledgement
+             */
+            case DATA_TRANSFER_START:
+                kvServer.aquireWriteLock();
+                sendMsgType = StatusType.DATA_TRANSFER_START_ACK;
+                break;
+            case DATA_TRANSFER_START_ACK:
+                kvServer.aquireWriteLock();
+                sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
+                break;
+            case DATA_TRANSFER_CONTENT:
+                sendMsgType = StatusType.DATA_TRANSFER_CONTENT_ACK;
+                // TODO
+                // sendMsgKey = kvServer.getKV();
+                // sendMsgValue = kvServer.getKV();
+                break;
+            case DATA_TRANSFER_CONTENT_ACK:
+                sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
+                kvServer.putKV(message.getKey(), message.getValue());
+                break;
+            case DATA_TRANSFER_STOP:
+                kvServer.releaseWriteLock();
+                sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
+                open = false;
+                break;
+            case DATA_TRANSFER_STOP_ACK:
+                kvServer.releaseWriteLock();
+                sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
+                open = false;
                 break;
             default:
                 // Server only handles GET and PUT, not handling other message types

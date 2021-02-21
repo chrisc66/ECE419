@@ -23,7 +23,7 @@ public interface KVMessage {
 	public enum StatusType {
 		/* Undefined messages */
 		UNDEFINED,		/* 00 Undefined - undefined status type, throw an exception */
-		/* Standard KV messages */
+		/* M1: Standard KV messages between KVServer and KVClient */
 		GET, 			/* 01 Get - request */
 		GET_ERROR, 		/* 02 requested tuple (i.e. value) not found */
 		GET_SUCCESS, 	/* 03 requested tuple (i.e. value) found */
@@ -32,13 +32,20 @@ public interface KVMessage {
 		PUT_UPDATE, 	/* 06 Put - request successful, i.e. value updated */
 		PUT_ERROR, 		/* 07 Put - request not successful */
 		DELETE_SUCCESS, /* 08 Delete - request successful */
-		DELETE_ERROR, 	/* 09 Delete - request successful */
-		/* Disconnect message */
+		DELETE_ERROR, 	/* 09 Delete - request not successful */
+		/* M1: Disconnect message between KVServer and KVClient */
 		DISCONNECT,		/* 10 Disconnect - close connection */
-
-		SERVER_STOPPED, /* 11  Server is stopped, no requests are processed */
-		SERVER_WRITE_LOCK, /* 12 Server locked for write, only get possible */
-		SERVER_NOT_RESPONSIBLE /* 13 Request not successful, server is not responsible for key */
+		/* M2: Server status between KVServer and KVClient */
+		SERVER_STOPPED, 			/* 11 Server is stopped, no requests are processed */
+		SERVER_WRITE_LOCK, 			/* 12 Server locked for write, only get possible */
+		SERVER_NOT_RESPONSIBLE, 	/* 13 Request not successful, server is not responsible for key */
+		/* M2: Disk persistent storage data transfer betwen distributed KVServers */
+		DATA_TRANSFER_START,		/* 14 Start of data transfer */
+		DATA_TRANSFER_START_ACK,	/* 15 Start of data transfer acknowledgement */
+		DATA_TRANSFER_CONTENT,		/* 16 Transfering data */
+		DATA_TRANSFER_CONTENT_ACK,	/* 17 Transfering data acknowledgement */
+		DATA_TRANSFER_STOP,			/* 18 End of data transfer */
+		DATA_TRANSFER_STOP_ACK		/* 19 End of data transfer acknowledgement */
 	}
 
 	/**
