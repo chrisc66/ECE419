@@ -2,7 +2,6 @@ package ecs;
 
 public class ECSNode implements IECSNode{
 
-
     private String nodeName;
     private String nodeHost;
     private String preNodeID;
@@ -10,6 +9,8 @@ public class ECSNode implements IECSNode{
     private String nextNodeID;
     private int nodePort;
     private String[] hashRange;
+
+    private STATUS status;
 
     public ECSNode(String nodeName,String nodeHost, int nodePort, String curNodeIDStart, String[] hashRange){
 
@@ -48,24 +49,42 @@ public class ECSNode implements IECSNode{
         this.nextNodeID = nextNodeID;
     }
 
+
+    public void setStatustoOFFLINE(){
+        status = STATUS.OFFLine;
+    }
+
+    public void setStatustoINUSE(){
+        status = STATUS.INUSE;
+    }
+
+    public void setStatustoIDLE(){
+        status = STATUS.IDLE;
+    }
+
+    @Override
     public void updateNodeDataBehind(String endRange){
         hashRange[1]= endRange;
         nextNodeID = endRange;
     }
 
+    @Override
     public void updateNodeDataBefore(String prevRange){
         preNodeID = prevRange;
     }
 
 
+    @Override
     public void setPreNodeID(String preNodeID) {
         this.preNodeID = preNodeID;
     }
 
+    @Override
     public void setNextNodeID(String nextNodeID) {
         this.nextNodeID = nextNodeID;
     }
 
+    @Override
     public String getCurNodeIDStart() {
         return curNodeID;
     }
