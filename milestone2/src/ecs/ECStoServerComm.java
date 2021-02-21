@@ -24,4 +24,5 @@ public class ECStoServerComm implements KVCommInterface {
     public KVMessage get(String key) throws Exception {
         return null;
     }
+
 }

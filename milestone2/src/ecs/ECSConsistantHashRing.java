@@ -12,39 +12,33 @@ public class ECSConsistantHashRing {
 
     /**The server names are defined as Address+port**/
     private static Logger logger = Logger.getRootLogger();
-    private HashMap<String,ECSNode> HashRing = new HashMap<>();
-    private List<String> inputServerNames = null;
+    private HashMap<String,IECSNode> HashRing = new HashMap<>(); //key: BigInteger in string format
     private List<BigInteger> keyArray= new ArrayList<>();
     private int hashRingSize = 0;
     private Object ExceptionInInitializerError;
     private Object RuntimeException;
 
-    public ECSConsistantHashRing(List<String> ServerNames){
-        inputServerNames = ServerNames;
+    public ECSConsistantHashRing(List<String> ServerNames, boolean init) throws Throwable {
         hashRingSize = ServerNames.size();
+        if (init){
+            initializeHashRing(ServerNames);
+        }
     }
 
 
-    public void generateHashRingFromServerNameList() throws Throwable {
-        if (inputServerNames == null){
+    public void initializeHashRing(List<String> ServerNames) throws Throwable {
+        if (ServerNames == null){
             logger.error("Please reset the list of input server Names");
             return;
         }
 
         for(int i=0; i < hashRingSize; i++){
             /** Assume server name are in the format of ip:port **/
-            String serverName = inputServerNames.get(i);
+            String serverName = ServerNames.get(i);
 
-
-            String [] addr_port = serverName.split(":");
-            String addr = addr_port[0];
-            String port = addr_port[1];
-
-            BigInteger hashStart = NametoHashConverter(serverName);
-
-            ECSNode newNode = new ECSNode(serverName,addr,Integer.parseInt(port),hashStart.toString());
-            HashRing.put(hashStart.toString(),newNode);
-            keyArray.add(hashStart);
+            ECSNode newNode = getECSNodeFromName(serverName);
+            HashRing.put(newNode.getCurNodeIDStart(),newNode);
+            keyArray.add(new BigInteger(newNode.getCurNodeIDStart()));
         }
         Collections.sort(keyArray);
 
@@ -69,6 +63,43 @@ public class ECSConsistantHashRing {
 
     }
 
+    public void addNewNodeByNode(ECSNode node) throws Throwable {
+        BigInteger ECSNodeID = NametoHashConverter(node.getNodeName());
+        int newElementIndex = -1;
+
+        for (int i=0; i < hashRingSize; i++){
+            int compare = ECSNodeID.compareTo(keyArray.get(i));
+            if (compare == 0){
+                //same as the input integer
+                logger.error("No two server node should have the same index");
+                throw (Throwable) ExceptionInInitializerError;
+            }else if (compare == -1){
+                keyArray.add(i,ECSNodeID);
+                newElementIndex = i;
+                break;
+            }else if(compare == 1){
+                //ecsnodeid > keyarray node id
+            }
+        }
+
+        hashRingSize+=1;
+        int nextIndex = (newElementIndex+1)%hashRingSize;
+        int preIndex = (newElementIndex==0) ?hashRingSize-1: newElementIndex-1;
+        String[] hashRange = createHashRange(ECSNodeID.toString(),keyArray.get(nextIndex).toString());
+
+        node.setNextNodeID(keyArray.get(nextIndex).toString());
+        node.setNodeHashRange(hashRange);
+        node.setPreNodeID(keyArray.get(preIndex).toString());
+
+
+        HashRing.put(ECSNodeID.toString(),node);
+        // update previous node of the newly added node in hashring
+        HashRing.get(keyArray.get(preIndex).toString()).updateNodeDataBehind(ECSNodeID.toString());
+        //update the node after the newly added node in hashring
+        HashRing.get(keyArray.get(nextIndex).toString()).updateNodeDataBefore(ECSNodeID.toString());
+
+    }
+
     /**Assume serverName format is ip:port**/
     public void addNewNode(String serverName) throws Throwable {
         String [] addr_port = serverName.split(":");
@@ -90,7 +121,6 @@ public class ECSConsistantHashRing {
                 break;
             }else if(compare == 1){
                 //ecsnodeid > keyarray node id
-                continue;
             }
         }
 
@@ -105,6 +135,20 @@ public class ECSConsistantHashRing {
         HashRing.get(keyArray.get(preIndex).toString()).updateNodeDataBehind(ECSNodeID.toString());
         //update the node after the newly added node in hashring
         HashRing.get(keyArray.get(nextIndex).toString()).updateNodeDataBefore(ECSNodeID.toString());
+
+    }
+
+    public boolean addNewNodeByNodes(Collection<ECSNode> nodes){
+
+        for(ECSNode i : nodes){
+            try {
+                addNewNodeByNode(i);
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+                return false;
+            }
+        }
+        return true;
 
     }
 
@@ -127,7 +171,7 @@ public class ECSConsistantHashRing {
         HashRing.get(keyArray.get(preIndex).toString()).setNextNodeID(keyArray.get(nextIndex).toString());
 
         hashRingSize -=1;
-        ECSNode delNode = HashRing.remove(nodeID.toString());
+        IECSNode delNode = HashRing.remove(nodeID.toString());
 
         if (delNode == null){
             logger.error("Something is very wrong");
@@ -136,17 +180,12 @@ public class ECSConsistantHashRing {
     }
 
     public void removeNodebyServerName(String serverName) throws Throwable {
-        String [] addr_port = serverName.split(":");
-        String addr = addr_port[0];
-        String port = addr_port[1];
-
         BigInteger ECSNodeID = NametoHashConverter(serverName);
         removeNodebyNodeID(ECSNodeID);
-
     }
 
 
-    public HashMap<String,ECSNode> getHashRing(){
+    public HashMap<String, IECSNode> getHashRing(){
         return HashRing;
     }
 
@@ -161,6 +200,17 @@ public class ECSConsistantHashRing {
             throw new NoSuchAlgorithmException();
         }
 
+    }
+
+    public ECSNode getECSNodeFromName(String serverName) throws NoSuchAlgorithmException {
+        String [] addr_port = serverName.split(":");
+        String addr = addr_port[0];
+        String port = addr_port[1];
+
+        BigInteger hashStart = NametoHashConverter(serverName);
+        ECSNode newNode = new ECSNode(serverName,addr,Integer.parseInt(port),hashStart.toString());
+
+        return  newNode;
     }
 
 }
