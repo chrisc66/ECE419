@@ -5,10 +5,13 @@ import DiskStorage.KeyValuePair;
 import java.util.*;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiPredicate;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class DiskStorage implements DiskStorageInterface{
 
@@ -21,18 +24,18 @@ public class DiskStorage implements DiskStorageInterface{
     private Map<String, String> LookUpTable;
 
     private String dir = "./data";
-    private String fileName = "persistanceDB.properties";
+    private String fileName;
     private File storageFile;
 
-
-    public DiskStorage(){
+    public DiskStorage(String serverName){
+        this.fileName = "persistanceDB.properties"+"."+serverName;
         initalizeFile();
         Map<String, String>new_map = new HashMap<String, String>();
         this.LookUpTable = Collections.synchronizedMap(new_map);
     }
 
-    public DiskStorage(String fileName){
-        this.fileName = fileName;
+    public DiskStorage(String filePrefix, String serverName){
+        this.fileName = filePrefix+"."+serverName;
         initalizeFile();
         this.LookUpTable = Collections.synchronizedMap(loadHashMapFromFile());
     }
@@ -64,7 +67,6 @@ public class DiskStorage implements DiskStorageInterface{
             } catch (IOException e) {
                 logger.error("Error initializing file instance", e);
             }
-
         }
     }
 
@@ -162,4 +164,38 @@ public class DiskStorage implements DiskStorageInterface{
         return this.LookUpTable.containsKey(key);
     }
 
+    public Map<String, String> getKVOutOfRange(BigInteger start, BigInteger stop){
+		Map<String, String> KVtable = Collections.synchronizedMap(loadHashMapFromFile());
+        Map<String, String> KVOutOfRange = new HashMap<String, String>();
+        for (Map.Entry kv : KVtable.entrySet()) { 
+            String key = (String) kv.getKey(); 
+            if (!mdKeyWithinRange(mdKey(key), start, stop)){
+                String value = (String) kv.getValue(); 
+                KVtable.put(key, value);
+            }
+        }
+        return KVOutOfRange;
+	}
+
+    public boolean mdKeyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){
+        // mdKey >= start -> 0 or 1
+        // mdKey < stop -> -1
+        return (mdKey.compareTo(start) >= 0 && mdKey.compareTo(stop) < 0);
+    }
+
+    /**
+	 * helper function for getting MD5 hash key
+	 * may need to move to some shared class for being visible for both client and server
+	 */
+	public BigInteger mdKey (String key) {
+		MessageDigest md = null;
+        try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("NoSuchAlgorithmException occured!");
+		}
+        byte[] md_key = md.digest(key.getBytes());
+        BigInteger md_key_bi = new BigInteger(1, md_key);
+		return md_key_bi; 
+	}
 }
