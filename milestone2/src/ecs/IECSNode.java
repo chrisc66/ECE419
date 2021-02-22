@@ -1,6 +1,23 @@
 package ecs;
 
 public interface IECSNode {
+    void setNextNodeID(String toString);
+
+    void setPreNodeID(String toString);
+
+    void setNodeHashRange(String[] hashRange);
+
+    String getCurNodeIDStart();
+
+    void updateNodeDataBehind(String toString);
+
+    void updateNodeDataBefore(String toString);
+
+    enum STATUS{
+        IDLE,
+        INUSE,
+        OFFLine,
+    }
 
     /**
      * @return  the name of the node (ie "Server 8.8.8.8")

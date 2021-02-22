@@ -1,6 +1,7 @@
 package shared.messages;
 
 import org.apache.log4j.Logger;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.Serializable;
