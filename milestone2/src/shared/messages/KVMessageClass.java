@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -259,10 +260,12 @@ public class KVMessageClass implements KVMessage, Serializable {
         if (statusTypeString != "SERVER_NOT_RESPONSIBLE") {
             return null;
         }
-        JSONArray arr = new JSONArray(value);
+        JSONObject metadata_jo = new JSONObject(value);
         ArrayList<Metadata> metadata_list = new ArrayList<>();
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject obj = arr.getJSONObject(i);
+        Iterator<String> keys = metadata_jo.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            JSONObject obj = (JSONObject) metadata_jo.get(key);
             Metadata temp = new Metadata (obj.getString("host"), obj.getInt("port"), obj.getBigInteger("start"), obj.getBigInteger("stop"));
             metadata_list.add(temp);
         }
