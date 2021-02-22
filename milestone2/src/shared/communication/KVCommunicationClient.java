@@ -1,18 +1,14 @@
 package shared.communication;
 
-import app_kvServer.KVServer;
+import org.apache.log4j.Logger;
 import shared.messages.KVMessage;
-import shared.messages.KVMessageClass;
 import shared.messages.KVMessage.StatusType;
+import shared.messages.KVMessageClass;
 
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.IOException;
 import java.net.Socket;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
 /**
  * This class represents communication between server and client.

@@ -1,19 +1,20 @@
 package shared.communication;
 
 import app_kvServer.KVServer;
+import org.apache.log4j.Logger;
+import org.json.JSONObject;
 import shared.messages.KVMessage;
-import shared.messages.KVMessageClass;
 import shared.messages.KVMessage.StatusType;
+import shared.messages.KVMessageClass;
+import shared.messages.Metadata;
 
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.IOException;
+import java.math.BigInteger;
 import java.net.Socket;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * This class represents communication between server and client.
@@ -183,6 +184,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
             case GET: 
                 // Aquire key-value pair from the server
                 try {
+                    if (!checkKey(message.getKey())) {
+                        return new KVMessageClass(sendMsgType, sendMsgKey, getMetadata().toString());
+                    }
                     sendMsgValue = kvServer.getKV(message.getKey());
                     sendMsgType = StatusType.GET_SUCCESS;
                     logger.info("GET_SUCCESS: Value is found on server, key: " + message.getKey());
@@ -194,6 +198,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 break;
             case PUT: 
                 // Identify status type and store key-value pair on the server
+                if (!checkKey(message.getKey())) {
+                    return new KVMessageClass(sendMsgType, sendMsgKey, getMetadata().toString());
+                }
                 if (!message.getValue().equals("")){    // PUT
                     // check if key-value pair is already stored
                     try {
@@ -319,6 +326,54 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 logger.error("Unable to close connection!", e);
             }
         } 
+    }
+
+    /**
+     * check if request key is in current server hashing range
+     */
+    public boolean checkKey(String key) throws NoSuchAlgorithmException {
+        BigInteger key_hash = mdKey(key);
+        if (key_hash.compareTo(KVServer.serverMetadata.start) == 1 && key_hash.compareTo(KVServer.serverMetadata.stop) != 1) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * helper function for getting MD5 hash key
+     * may need to move to some shared class for being visible for both client and server
+     */
+
+    public BigInteger mdKey (String key) throws NoSuchAlgorithmException {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] md_key = md.digest(key.getBytes());
+            BigInteger md_key_bi = new BigInteger(1, md_key);
+            return md_key_bi;
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("NoSuchAlgorithmException occured!");
+            throw new NoSuchAlgorithmException();
+        }
+    }
+
+    /**
+     * get metadata for client(KVstore) in format of byte[]
+     */
+    public JSONObject getMetadata(){
+        //metadata may need to be global
+        //otherwise the thread of KVcomminicationServer would use same metadata all the time
+
+        JSONObject metadata_jo = new JSONObject();
+        for (int i = 0; i < KVServer.metadataList.size(); i++) {
+            Metadata metadata = KVServer.metadataList.get(i);
+            JSONObject obj = new JSONObject();
+            obj.put("serverAddress", metadata.serverAddress);
+            obj.put("serverPort", metadata.port);
+            obj.put("start", metadata.start);
+            obj.put("stop", metadata.stop);
+            metadata_jo.put("metadata" + String.valueOf(i), obj);
+        }
+        return metadata_jo;
     }
 
 }

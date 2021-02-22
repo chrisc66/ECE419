@@ -1,23 +1,17 @@
 package app_kvServer;
 
-import shared.communication.KVCommunicationServer;
-import shared.messages.KVMessage;
-import shared.messages.Metadata;
-import logger.LogSetup;
 import DiskStorage.DiskStorage;
-
-import java.util.Map;
-import java.util.ArrayList;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.UnknownHostException;
-import java.net.BindException;
-import java.net.Socket;
-import java.io.IOException;
-import java.io.File;
-
+import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import shared.communication.KVCommunicationServer;
+import shared.messages.Metadata;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.*;
+import java.util.ArrayList;
+import java.util.Map;
 
 public class KVServer implements IKVServer, Runnable {
 
@@ -39,10 +33,10 @@ public class KVServer implements IKVServer, Runnable {
 	private static final String filePreFix = "persistanceDB.properties";
 
 	// M2: Distributed server config
-	Metadata serverMetadata;	// metadata for itself
-	String serverName;
-	ArrayList<Metadata> metadataList;
-	private boolean writeLock;
+	public static String serverName;
+	public static Metadata serverMetadata;	// metadata for itself
+	public static ArrayList<Metadata> metadataList;
+	public static boolean writeLock;
 
 	/**
 	 * Start KV Server at given port
