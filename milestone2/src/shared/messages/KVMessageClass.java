@@ -174,18 +174,6 @@ public class KVMessageClass implements KVMessage, Serializable {
                 return StatusType.SERVER_WRITE_LOCK;
             case "SERVER_NOT_RESPONSIBLE":
                 return StatusType.SERVER_NOT_RESPONSIBLE;
-            case "DATA_TRANSFER_START":
-                return StatusType.DATA_TRANSFER_START;
-            case "DATA_TRANSFER_START_ACK":
-                return StatusType.DATA_TRANSFER_START_ACK;
-            case "DATA_TRANSFER_CONTENT":
-                return StatusType.DATA_TRANSFER_CONTENT;
-            case "DATA_TRANSFER_CONTENT_ACK":
-                return StatusType.DATA_TRANSFER_CONTENT_ACK;
-            case "DATA_TRANSFER_STOP":
-                return StatusType.DATA_TRANSFER_STOP;
-            case "DATA_TRANSFER_STOP_ACK":
-                return StatusType.DATA_TRANSFER_STOP_ACK;
             default:
                 return StatusType.UNDEFINED;
         }
@@ -223,18 +211,6 @@ public class KVMessageClass implements KVMessage, Serializable {
                 return "SERVER_WRITE_LOCK";
             case SERVER_NOT_RESPONSIBLE:
                 return "SERVER_NOT_RESPONSIBLE";
-            case DATA_TRANSFER_START:
-                return "DATA_TRANSFER_START";
-            case DATA_TRANSFER_START_ACK:
-                return "DATA_TRANSFER_START_ACK";
-            case DATA_TRANSFER_CONTENT:
-                return "DATA_TRANSFER_CONTENT";
-            case DATA_TRANSFER_CONTENT_ACK:
-                return "DATA_TRANSFER_CONTENT_ACK";
-            case DATA_TRANSFER_STOP:
-                return "DATA_TRANSFER_STOP";
-            case DATA_TRANSFER_STOP_ACK:
-                return "DATA_TRANSFER_STOP_ACK";
             default:
                 return "UNDEFINED";
         }
