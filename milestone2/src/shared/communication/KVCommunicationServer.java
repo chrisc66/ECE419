@@ -255,40 +255,40 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 sendMsgType = StatusType.DISCONNECT;
                 logger.info("PUT_SUCCESS: Value is stored on server");
                 break;
-            /** 
-             * Below messages are for kv-pair data transfer between two KVServers (sender and receiver)
-             * 1. Sender sends data transfer start, receiver sends back acknowledgement
-             * 2. Sender sends data transfer content (one pair at a time), receiver sends back acknowledgement
-             * 3. Sender sends data transfer stop, receiver sends back acknowledgement
-             */
-            case DATA_TRANSFER_START:
-                kvServer.aquireWriteLock();
-                sendMsgType = StatusType.DATA_TRANSFER_START_ACK;
-                break;
-            case DATA_TRANSFER_START_ACK:
-                kvServer.aquireWriteLock();
-                sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
-                break;
-            case DATA_TRANSFER_CONTENT:
-                sendMsgType = StatusType.DATA_TRANSFER_CONTENT_ACK;
-                // TODO
-                // sendMsgKey = kvServer.getKV();
-                // sendMsgValue = kvServer.getKV();
-                break;
-            case DATA_TRANSFER_CONTENT_ACK:
-                sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
-                kvServer.putKV(message.getKey(), message.getValue());
-                break;
-            case DATA_TRANSFER_STOP:
-                kvServer.releaseWriteLock();
-                sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
-                open = false;
-                break;
-            case DATA_TRANSFER_STOP_ACK:
-                kvServer.releaseWriteLock();
-                sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
-                open = false;
-                break;
+            // /** 
+            //  * Below messages are for kv-pair data transfer between two KVServers (sender and receiver)
+            //  * 1. Sender sends data transfer start, receiver sends back acknowledgement
+            //  * 2. Sender sends data transfer content (one pair at a time), receiver sends back acknowledgement
+            //  * 3. Sender sends data transfer stop, receiver sends back acknowledgement
+            //  */
+            // case DATA_TRANSFER_START:
+            //     kvServer.aquireWriteLock();
+            //     sendMsgType = StatusType.DATA_TRANSFER_START_ACK;
+            //     break;
+            // case DATA_TRANSFER_START_ACK:
+            //     kvServer.aquireWriteLock();
+            //     sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
+            //     break;
+            // case DATA_TRANSFER_CONTENT:
+            //     sendMsgType = StatusType.DATA_TRANSFER_CONTENT_ACK;
+            //     // TODO
+            //     // sendMsgKey = kvServer.getKV();
+            //     // sendMsgValue = kvServer.getKV();
+            //     break;
+            // case DATA_TRANSFER_CONTENT_ACK:
+            //     sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
+            //     kvServer.putKV(message.getKey(), message.getValue());
+            //     break;
+            // case DATA_TRANSFER_STOP:
+            //     kvServer.releaseWriteLock();
+            //     sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
+            //     open = false;
+            //     break;
+            // case DATA_TRANSFER_STOP_ACK:
+            //     kvServer.releaseWriteLock();
+            //     sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
+            //     open = false;
+            //     break;
             default:
                 // Server only handles GET and PUT, not handling other message types
                 throw new IllegalStateException("Received an unsupported messaage. Server only handles 'GET' and 'PUT' KVMessages.");

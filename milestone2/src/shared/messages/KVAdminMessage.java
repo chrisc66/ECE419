@@ -4,27 +4,33 @@ import java.util.*;
 import org.json.*;
 import com.google.gson.Gson;
 
+/**
+ * KVAdminMessage is used to transfer admin messages between ECS and distributed KVServers.
+ * 
+ * <p>
+ * The message is sent through ZooKeeper API (setData and getData) in the format of String transferred to byte array.
+ * </p>
+ * 
+ * <ul>
+ * <li>KVAdminType: represented by String </li>
+ * <li>Metadata / Data: JSON objects 
+ * </ul>
+ * 
+ */
 public class KVAdminMessage {
     
     public enum KVAdminType {
-        UNDEFINED,  // Error: undefined type
-        INIT,       // KVServer is created but not running
-        START,      // KVServer is created and running
-        UPDATE,     // KVServer needs to update metadata
-        STOP        // KVServer is stopped
+        /* Undefined messages */
+        UNDEFINED,      // Error: undefined type
+        /* Type representing KVServer status */
+        INIT,           // KVServer is created but not running
+        START,          // KVServer is created and running
+        UPDATE,         // KVServer needs to update metadata
+        STOP,           // KVServer is stopped
+        /* Data transfer betwen distributed KVServers */
+		SEND        	// KVServer data transfer
     }
 
-    /**
-     * KVAdminMessage JSON format
-     * [
-     *   "KVAdminMessage",
-     *   KVAdminType,
-     *   {
-     *     "servername1": Metadata1,
-     *     "servername2": Metadata2
-     *   }
-     * ]
-     */
     public KVAdminType kvAdminType;
     public Map<String, Metadata> metadataList;  // servername, metadata
 
@@ -63,6 +69,8 @@ public class KVAdminMessage {
                 return "UPDATE";
             case STOP:
                 return "STOP";
+            case SEND:
+                return "SEND";
             default:
                 return "UNDEFINED";
         }
@@ -78,6 +86,8 @@ public class KVAdminMessage {
                 return KVAdminType.UPDATE;
             case "STOP":
                 return KVAdminType.STOP;
+            case "SEND":
+                return KVAdminType.SEND;
             default:
                 return KVAdminType.UNDEFINED;
         }

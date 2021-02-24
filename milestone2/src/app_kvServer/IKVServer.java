@@ -106,6 +106,38 @@ public interface IKVServer {
     /******************** Milestone 2 ********************/
 
     /**
+     * ECS-related start, starts serving requests
+     */
+    public void start();
+
+    /**
+     * ECS-related stop, stops serving requests
+     */
+    public void stop();
+
+    /**
+     * ECS-related lock, locks the KVServer for write operations
+     */
+    public void lockWrite();
+
+    /**
+     * ECS-related unlock, unlocks the KVServer for write operations
+     */
+    public void unlockWrite();
+
+    /** 
+     * Get ECS-related write lock status of KVServer. 
+     * 
+     * @return writeLock representing if the server is writable.
+     */
+    public boolean getWriteLock();
+
+    /**
+     * ECS-related moveData, move the given hashRange to the server going by the targetName
+     */
+    public boolean moveData(String[] hashRange, String targetName) throws Exception;
+
+    /**
      * Get metadata (information of other servers) for distributed servers. 
      */
     public ArrayList<Metadata> getMetaData();
@@ -117,21 +149,5 @@ public interface IKVServer {
      * @return map of out-of-ranged KV pairs
      */
     public Map<String, String> getKVOutOfRange();
-
-    /** 
-     * Get write lock status of KVServer. 
-     * 
-     * @return writeLock representing if the server is writable.
-     */
-    public boolean getWriteLock();
     
-    /** 
-     * Aquires write lock of KVServer. 
-     */
-    public void aquireWriteLock();
-
-    /** 
-     * Release write lock of KVServer. 
-     */
-    public void releaseWriteLock();
 }
