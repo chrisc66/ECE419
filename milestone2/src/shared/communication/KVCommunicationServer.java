@@ -11,7 +11,8 @@ import shared.messages.Metadata;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
-
+import java.util.Iterator;
+import java.util.Map;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
@@ -367,17 +368,22 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     public JSONObject getMetadata(){
         //metadata may need to be global
         //otherwise the thread of KVcomminicationServer would use same metadata all the time
-
         JSONObject metadata_jo = new JSONObject();
-        for (int i = 0; i < KVServer.metadataList.size(); i++) {
-            Metadata metadata = KVServer.metadataList.get(i);
+        Map<String, Metadata> metadataMap = kvServer.getMetaData();
+        int count = 0;
+        Iterator it = metadataMap.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry entry = (Map.Entry) it.next();
+            String key = (String) entry.getKey(); 
+			Metadata metadata = (Metadata) entry.getValue();
             JSONObject obj = new JSONObject();
             obj.put("serverAddress", metadata.serverAddress);
             obj.put("serverPort", metadata.port);
             obj.put("start", metadata.start);
             obj.put("stop", metadata.stop);
-            metadata_jo.put("metadata" + String.valueOf(i), obj);
-        }
+            metadata_jo.put("metadata" + String.valueOf(count), obj);
+            count ++;
+		}
         return metadata_jo;
     }
 

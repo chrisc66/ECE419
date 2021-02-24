@@ -123,6 +123,6 @@ public class ECSNode implements IECSNode{
     }
 
     public void setNodeHashRange(String[] hashRange){
-        hashRange = hashRange;
+        this.hashRange = hashRange;
     }
 }

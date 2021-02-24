@@ -16,6 +16,12 @@ public interface IKVServer {
         FIFO
     };
 
+    public enum DistributedServerStatus {
+        START,          // KVServer responds to both ECS and KVClient
+        STOP,           // KVServer responds to only ECS
+        SHUTDOWN        // KVServer does not respond to anyone, shuting down
+    }
+
     /**
      * Get the port number of the server
      * @return  port number
@@ -138,9 +144,9 @@ public interface IKVServer {
     public boolean moveData(String[] hashRange, String targetName) throws Exception;
 
     /**
-     * Get metadata (information of other servers) for distributed servers. 
+     * Get metadata (information of all servers) for distributed servers. 
      */
-    public ArrayList<Metadata> getMetaData();
+    public Map<String, Metadata> getMetaData();
 
     /**
      * Get the KV pairs that are stored but not responsible by the KVServer.
