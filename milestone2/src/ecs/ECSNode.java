@@ -10,7 +10,7 @@ public class ECSNode implements IECSNode{
     private int nodePort;
     private String[] hashRange;
 
-    private STATUS status;
+    public STATUS status;
 
     public ECSNode(String nodeName,String nodeHost, int nodePort, String curNodeIDStart, String[] hashRange){
 
@@ -51,7 +51,7 @@ public class ECSNode implements IECSNode{
 
 
     public void setStatustoOFFLINE(){
-        status = STATUS.OFFLine;
+        status = STATUS.OFFLINE;
     }
 
     public void setStatustoINUSE(){
@@ -60,6 +60,10 @@ public class ECSNode implements IECSNode{
 
     public void setStatustoIDLE(){
         status = STATUS.IDLE;
+    }
+
+    public void setStatustoSTOP(){
+        status = STATUS.STOP;
     }
 
     @Override

@@ -16,7 +16,7 @@ public class ECSUI{
     public void run() throws Exception{
         while(!stop) {
             stdin = new BufferedReader(new InputStreamReader(System.in));
-
+            System.out.println("ECS UI running");
             try {
                 String cmdLine = stdin.readLine();
                 this.handleCommand(cmdLine);

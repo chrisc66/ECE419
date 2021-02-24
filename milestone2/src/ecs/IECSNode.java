@@ -14,9 +14,10 @@ public interface IECSNode {
     void updateNodeDataBefore(String toString);
 
     enum STATUS{
-        IDLE,
-        INUSE,
-        OFFLine,
+        OFFLINE,    // nodes sitting in ecs config not added
+        IDLE,       // nodes added but not started
+        INUSE,      // nodes started
+        STOP        // nodes shutdown 
     }
 
     /**
