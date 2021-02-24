@@ -74,9 +74,9 @@ public class KVServer implements IKVServer, Runnable {
 			this.diskStorage = new DiskStorage(filePreFix, serverName);
 		else
 			this.diskStorage = new DiskStorage(serverName);
-		// Create a new thread that start runing KVServer
-		Thread clientThread = new Thread(this);
-		clientThread.start();
+		// // Create a new thread that start runing KVServer
+		// Thread clientThread = new Thread(this);
+		// clientThread.start();
 	}
 
 	/**
@@ -144,7 +144,7 @@ public class KVServer implements IKVServer, Runnable {
 			logger.error(e);
 		}
 		// Run KVServer after creation
-		this.run();
+		// this.run();
 	}
 
 	/** 
@@ -337,7 +337,8 @@ public class KVServer implements IKVServer, Runnable {
 			int port = Integer.parseInt(args[0]);
 			int cacheSize = Integer.parseInt(args[1]);
 			String strategy = args[2];
-			new KVServer(port, cacheSize, strategy);
+			KVServer kvServer = new KVServer(port, cacheSize, strategy);
+			kvServer.run();
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");
