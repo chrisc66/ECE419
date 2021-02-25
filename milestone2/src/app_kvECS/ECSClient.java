@@ -17,6 +17,7 @@ import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.Iterator;
 
 public class ECSClient implements IECSClient{
 
@@ -108,7 +109,6 @@ public class ECSClient implements IECSClient{
                 }
                 serverStatusMap.put(dataArray[1]+":"+dataArray[2], IECSNode.STATUS.OFFLINE);
             }
-
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -154,7 +154,8 @@ public class ECSClient implements IECSClient{
     public boolean start() {
         // TODO: start all KVServers 
         // KVServers responds to both ECS and KVClient
-        // Starts the storage service by calling start() on all KVServer instances that participate in the service
+        // Create KVAdminMessage with type START
+        // Send message with zk.setData() to correct KVServer znode
         return false;
     }
 
@@ -162,7 +163,8 @@ public class ECSClient implements IECSClient{
     public boolean stop() {
         // TODO: stop all KVServers
         // KVServers still responds to ECS but not KVClient
-        // Stops the service; all participating KVServers are stopped for processing client requests but the processes remain running
+        // Create KVAdminMessage with type STOP
+        // Send message with zk.setData() to correct KVServer znode
         return false;
     }
 
@@ -170,6 +172,8 @@ public class ECSClient implements IECSClient{
     public boolean shutdown() {
         // TODO: shutdown all KVServers
         // Stops all server instances and exits the remote processes
+        // Create KVAdminMessage with type SHUTDOWN
+        // Send message with zk.setData() to correct KVServer znode
         return false;
     }
 
@@ -181,6 +185,10 @@ public class ECSClient implements IECSClient{
 
     @Override
     public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
+        // TODO
+        // Create KVAdminMessage with type UPDATE and metadata
+        // Send message with zk.setData() to correct KVServer znode
+        
         // select x number of servers from the avalibale server list
         if (curServers.size() == serverStatusMap.size()){
             logger.error("All servers in the configurations are deployed");
@@ -221,35 +229,54 @@ public class ECSClient implements IECSClient{
     public Collection<IECSNode> setupNodes(int count, String cacheStrategy, int cacheSize) {
         if (count > serverStatusMap.size()) 
             return null;
-        // TODO: send metadata to all added nodes using zk.setData
-        
-        // Maybe this is a good location for
-        // TODO: watch child nodes
-		for (Map.Entry<String,IECSNode.STATUS> serverEntry : serverStatusMap.entrySet()){
-            String serverName = serverEntry.getKey();
-            try {
-                zk.getChildren(zkRootNodePath+"/"+serverName, new Watcher () {
-                    @Override
-                    public void process(WatchedEvent event) {
-                        // TODO: check if any child znode is missing
-                    }
-                }, null);
-            } catch (KeeperException | InterruptedException e) {
-                logger.error(e);
-            }
-        }
+        // TODO
+        // Create KVAdminMessage with type INIT and metadata
+        // Send message with zk.setData() to correct KVServer znode
+
+        // TODO: Maybe this is a good location for watching child nodes
+        // for (Map.Entry<String,IECSNode.STATUS> serverEntry : serverStatusMap.entrySet()){
+        //     String serverName = serverEntry.getKey();
+        //     try {
+        //         zk.getChildren(zkRootNodePath+"/"+serverName, new Watcher () {
+        //             @Override
+        //             public void process(WatchedEvent event) {
+        //                 // TODO: check if any child znode is missing
+        //             }
+        //         }, null);
+        //     } catch (KeeperException | InterruptedException e) {
+        //         logger.error(e);
+        //     }
+        // }
         return null;
     }
 
     @Override
     public boolean awaitNodes(int count, int timeout) throws Exception {
-        // TODO: wait until all nodes response or timeout
+        // TODO: wait until all nodes response (how?) or timeout
+        
+        // TODO: Maybe this is a good location for watching child nodes
+		// for (Map.Entry<String,IECSNode.STATUS> serverEntry : serverStatusMap.entrySet()){
+        //     String serverName = serverEntry.getKey();
+        //     try {
+        //         zk.getChildren(zkRootNodePath+"/"+serverName, new Watcher () {
+        //             @Override
+        //             public void process(WatchedEvent event) {
+        //                 // TODO: check if any child znode is missing
+        //             }
+        //         }, null);
+        //     } catch (KeeperException | InterruptedException e) {
+        //         logger.error(e);
+        //     }
+        // }
         return false;
     }
 
     @Override
     public boolean removeNodes(Collection<String> nodeNames) {
         // TODO
+        // Create KVAdminMessage with type UPDATE and metadata
+        // Send message with zk.setData() to correct KVServer znode
+        
         for (String i: nodeNames){
             try {
                 hashRingDB.removeNodebyServerName(i);

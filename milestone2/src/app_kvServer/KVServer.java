@@ -1,17 +1,22 @@
 package app_kvServer;
 
 import shared.communication.KVCommunicationServer;
+import shared.messages.KVAdminMessage;
 import shared.messages.KVMessage;
 import shared.messages.Metadata;
+import shared.messages.KVAdminMessage.KVAdminType;
 import logger.LogSetup;
 import DiskStorage.DiskStorage;
 
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.concurrent.CountDownLatch;
 import java.net.*;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
@@ -25,26 +30,27 @@ public class KVServer implements IKVServer, Runnable {
 	private static Logger logger = Logger.getRootLogger();
 
 	// M1: KVServer config
-	private ServerSocket serverSocket;
-	private int port;
-	private int cacheSize;
-	private String strategy;
-	private boolean running;
+	private ServerSocket serverSocket;											// socket that KVServer listens to
+	private int port;															// port that KVServer listens on
+	private int cacheSize;														// KVServer cache size (not implemented)
+	private String strategy;													// KVServer cache strategy (not implemented)
+	private boolean running;													// flag to indicate if KVServer is running 
 
 	// M1: KVClient connections
-	private ArrayList<Thread> clientThreads;
+	private ArrayList<Thread> clientThreads;									// list of active client threads (KVCommunicationServer)
 
 	// M1: KVServer disk persistent storage
-	private DiskStorage diskStorage;
-	private static final String dir = "./data";
-	private static final String filePreFix = "persistanceDB.properties";
+	private static DiskStorage diskStorage;											// KVServer persistent disk storage
+	private static final String dir = "./data";									// KVServer storage directory on disk file system
+	private static final String filePreFix = "persistanceDB.properties";		// storage file prefix
 
 	// M2: Distributed server config
-	public static ArrayList<Metadata> metadataList = new ArrayList<Metadata>();	// metadata for every running distributed KVServer instances
-	private Metadata serverMetadata;											// metadata for current instance of KVServer 
-	private boolean distributed;												// flag to record KVServer running in distributed or non-distributed mode
-	private String serverName;													// KVServer name in ip:port format
-	private boolean writeLock;													// lock server from KVClient write operation 
+	private static boolean distributed;											// flag to record KVServer running in distributed or non-distributed mode
+	private static DistributedServerStatus serverStatus;						// status of current running KVServer instance
+	private static String serverName;											// KVServer name in the format of ip:port
+	private static Map<String, Metadata> metadataList;							// metadata for every running distributed KVServer instances
+	private static Metadata serverMetadata;										// metadata for current instance of KVServer 
+	private static boolean writeLock;											// lock server from KVClient write operation 
 
 	// M2: ZooKeeper config
 	private ZooKeeper zk;														// ZooKeeper client instance
@@ -137,27 +143,22 @@ public class KVServer implements IKVServer, Runnable {
 					if (!running) return;
 					try {
 						byte[] kvAdminMsgBytes = zk.getData(zkServerNodePath, this, null);
-						setMetadata(kvAdminMsgBytes);
+						String kvAdminMsgStr = new String(kvAdminMsgBytes, StandardCharsets.UTF_8);
+						// HERE Process kv admin message
+						processKVAdminMesage(kvAdminMsgStr);
 					} catch (KeeperException | InterruptedException e) {
 						logger.error(e);
 					}
 				}
 			}, null);
-			setMetadata(kvAdminMsgBytes);
+			String kvAdminMsgStr = new String(kvAdminMsgBytes, StandardCharsets.UTF_8);
+			processKVAdminMesage(kvAdminMsgStr);
 		} catch (KeeperException | InterruptedException e) {
 			logger.error(e);
 		}
 	}
 
-	/** 
-	 * Update metadata list and servermetadata from byte array.
-	 * Note: this function is part of the distributed KVServer constructor
-	 */
-	public void setMetadata(byte[] kvAdminMsgBytes){
-		// TODO: set metadata list using KVAdminMessage bytes
-		// this.metadataList = 
-		// this.serverMetadata = 
-	}
+	/* M1: Non-distributed KVServer methods */
 
 	private boolean storageFileExist(){
 		File dirFIle = new File(dir);
@@ -315,23 +316,29 @@ public class KVServer implements IKVServer, Runnable {
 		}
 	}
 
+	/* M2: Distributed KVServer methods */
+
 	@Override
 	public void start(){
-		// TODO start KVServer for responding to KVClients
+		logger.info("KVServer started, accepting client requests.");
+		serverStatus = DistributedServerStatus.START;
 	} 
 
 	@Override
 	public void stop(){
-		// TODO stop KVServer from responding to KVClients
+		logger.info("KVServer stopped, rejecting client requests.");
+		serverStatus = DistributedServerStatus.STOP;
 	}
 
 	@Override
 	public void lockWrite(){ 
+		logger.info("KVServer acquiring write lock, rejecting client write requests.");
 		writeLock = true; 
 	}
 
 	@Override
 	public void unlockWrite(){ 
+		logger.info("KVServer releasing write lock, accepting client write requests.");
 		writeLock = false; 
 	}
 
@@ -342,18 +349,117 @@ public class KVServer implements IKVServer, Runnable {
 
 	@Override
 	public boolean moveData(String[] hashRange, String targetName) throws Exception{
-		// TODO move data between hashRange start and hashRange stop to KVServer with name targetName
-		return false;
+		// get start and stop big integer value
+		BigInteger start = new BigInteger(hashRange[0]);
+		BigInteger stop = new BigInteger(hashRange[1]);
+		// Entering critical region and acquire write lock
+		lockWrite();
+		// get out of range KV pairs and remove from disk storage
+		Map<String, String> kvOutOfRange = getKVOutOfRange();
+		Iterator it = kvOutOfRange.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry kvPair = (Map.Entry)it.next();
+			String key = (String) kvPair.getKey(); 
+			if (!diskStorage.mdKeyWithinRange(diskStorage.mdKey(key), start, stop)){
+                System.out.println("Error: I should not reach here");
+				logger.error("Error: I should not reach here");
+				kvOutOfRange.remove(key);
+            }
+			else {
+				diskStorage.delelteKV(key);
+			}
+		}
+		// send KVAdminMessage with KV pairs data
+		KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutOfRange);
+		String zkDestServerNodePath = zkRootNodePath + "/" + targetName;
+		zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, true).getVersion());
+		// Leaving critical region and releasing write lock
+		unlockWrite();
+		return true;
+	}
+
+	/**
+	 * Receive KV messages from KVAdminMessage data transfer and store in disk storage.
+	 * 
+	 * Note: this function assumes it holds write lock. 
+	 * 
+	 * @param kvAdminMsgStr KVAdminMessage string
+	 */
+	public void receiveKVData(String kvAdminMsgStr){
+		// TODO: store KV pair into disk storage
+		// Create KVAdminMessage from input string
+		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
+		KVAdminType recvMsgType = recvMsg.getMessageType();
+		// Verify message type is TRANSFER_KV KV data
+		if (recvMsgType != KVAdminType.TRANSFER_KV){
+			logger.error("Unhandled case: KVAdminMessage type mismatch");
+			return;
+		}
+		// Entering critical region and acquire write lock
+		lockWrite();
+		// Get KV pairs data and store into disk
+		Map<String, String> recvMsgKvData = recvMsg.getMessageKVData();
+		Iterator it = recvMsgKvData.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry kvPair = (Map.Entry)it.next();
+			this.diskStorage.put(kvPair.getKey().toString(), kvPair.getValue().toString());
+		}
+		// Leaving critical region and releasing write lock
+		unlockWrite();
+	}
+
+	/** 
+	 * Update metadata list and servermetadata from byte array.
+	 * 
+	 * @param kvAdminMsgStr KVAdminMessage string
+	 */
+	public void setMetadata(String kvAdminMsgStr){
+		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
+		String msgType = recvMsg.getMessageTypeString();
+		if (msgType == "UPDATE"){
+			this.metadataList = recvMsg.getMessageMetadata();
+			this.serverMetadata = metadataList.get(serverName);
+		}
+		// TODO move data to proper KVServers
+		// ??? How do we know target name ???
+		// ??? is Metadata transferable in string?
+		// moveData(hashRange, targetName)
 	}
 
 	@Override
-	public ArrayList<Metadata> getMetaData(){
+	public Map<String, Metadata> getMetaData(){
 		return metadataList;
 	}
 
 	@Override
 	public Map<String, String> getKVOutOfRange(){
 		return diskStorage.getKVOutOfRange(serverMetadata.start, serverMetadata.stop);
+	}
+
+	public void processKVAdminMesage (String kvAdminMsgStr){
+		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
+		switch(recvMsg.getMessageType()){
+			case INIT:			// INIT + metadata + null
+				if (serverStatus == DistributedServerStatus.STOP)
+					setMetadata(kvAdminMsgStr);
+				break;
+			case START:			// START + null + null
+				this.start();
+				break;
+			case STOP:			// STOP + null + null
+				this.stop();
+				break;
+			case UPDATE:		// UPDATE + metadata + null
+				setMetadata(kvAdminMsgStr);
+				break;
+			case SHUTDOWN:		// SHUTDOWN + null + null
+				this.close();
+				break;
+			case TRANSFER_KV:	// TRANSFER_KV + null + kv-pairs
+				receiveKVData(kvAdminMsgStr);
+				break;
+			default:
+		}
 	}
 
 	public static void main(String[] args) throws IOException {
