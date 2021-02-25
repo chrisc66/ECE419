@@ -401,34 +401,51 @@ public class ECSClient implements IECSClient{
 
     private void handleCommand(String cmdLine) throws Exception {
         String[] tokens = cmdLine.split("\\s+");
-        if (tokens[0].equals("addNodes")) {
+        if (tokens[0].equals("addnodes")) {
             if (tokens.length == 2) {
+                System.out.println("Adding storage server nodes");
                 Collection<IECSNode> nodes = addNodes(Integer.parseInt(tokens[1]), "NONE", 0);
             }
-        } else if (tokens[0].equals("addNode")) {
+            else{
+                System.out.println("Error: number of nodes expected");
+            }
+        } else if (tokens[0].equals("addnode")) {
+            System.out.println("Adding storage server node");
             IECSNode node = addNode("", 0);
         } else if (tokens[0].equals("start")) {
-            System.out.println("Starting all KVServers");
+            System.out.println("Starting all storage servers");
             start();
         } else if (tokens[0].equals("stop")) {
+            System.out.println("Stopping down all storage servers");
             stop();
-        } else if (tokens[0].equals("shutDown")) {
+        } else if (tokens[0].equals("shutdown")) {
+            System.out.println("Shutting down down all storage servers");
             shutdown();
-        } else if (tokens[0].equals("removeNode")) {
+        } else if (tokens[0].equals("removenode")) {
+            System.out.println("Removing nodes");
             List<String> removeServerList = new ArrayList<>();
-            for (int i =1; i < tokens.length; i++) {
+            for (int i = 1; i < tokens.length; i++) {
                 removeServerList.add(tokens[i]);
             }
             removeNodes(removeServerList);
         } else if (tokens[0].equals("status")) {
             printServerStatus();
+        } else if (tokens[0].equals("help")) {
+            printHelp();
+        } else if (tokens[0].equals("quit")) {
+            System.out.println("Shutdown all storage servers before exiting");
+            shutdown();
+            System.out.println("Application exit!");
+            System.exit(0);
         } else {
             printError("Unknown command");
+            printHelp();
             logger.error("Unknown command: " + tokens[0]);
         }
     }
 
     public void printServerStatus (){
+        System.out.println("Status of all servers loaded from ecs.config");
         Iterator it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
@@ -448,8 +465,22 @@ public class ECSClient implements IECSClient{
                 default:
                     serverStatusStr = "UNDEFINED";
             }
-            System.out.println(serverName + " --> " + serverStatusStr);
+            System.out.println(" * " + serverName + " --> " + serverStatusStr);
         }
+    }
+
+    public void printHelp(){
+        System.out.println("External Configuration Service (ECS) Client");
+        System.out.println("Possible commands are:");
+        System.out.println("    addnode");
+        System.out.println("    addnode <numer of nodes>");
+        System.out.println("    removenode <server names>");
+        System.out.println("    start");
+        System.out.println("    stop");
+        System.out.println("    shutdown");
+        System.out.println("    status");
+        System.out.println("    quit");
+        System.out.println("    help");
     }
 
     public static void main(String[] args) {
