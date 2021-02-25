@@ -40,7 +40,7 @@ public class KVServer implements IKVServer, Runnable {
 	private ArrayList<Thread> clientThreads;									// list of active client threads (KVCommunicationServer)
 
 	// M1: KVServer disk persistent storage
-	private static DiskStorage diskStorage;											// KVServer persistent disk storage
+	private static DiskStorage diskStorage;										// KVServer persistent disk storage
 	private static final String dir = "./data";									// KVServer storage directory on disk file system
 	private static final String filePreFix = "persistanceDB.properties";		// storage file prefix
 
@@ -48,7 +48,7 @@ public class KVServer implements IKVServer, Runnable {
 	private static boolean distributed;											// flag to record KVServer running in distributed or non-distributed mode
 	private static DistributedServerStatus serverStatus;						// status of current running KVServer instance
 	private static String serverName;											// KVServer name in the format of ip:port
-	private static Map<String, Metadata> metadataList;							// metadata for every running distributed KVServer instances
+	private static Map<String, Metadata> serverMetadatasMap;					// metadata for every running distributed KVServer instances
 	private static Metadata serverMetadata;										// metadata for current instance of KVServer 
 	private static boolean writeLock;											// lock server from KVClient write operation 
 
@@ -97,7 +97,7 @@ public class KVServer implements IKVServer, Runnable {
 	public KVServer(String serverName, int zkPort, String zkHostname){
 		/* M1: non-distributed KVServer data members */
 		this.serverSocket = null;
-		this.port = Integer.parseInt(serverName.split(":")[2]);	// port is contained in server name
+		this.port = Integer.parseInt(serverName.split(":")[1]);	// port is contained in server name
 		this.cacheSize = 0;
 		this.clientThreads = new ArrayList<Thread>();
 		this.serverName = serverName;
@@ -144,7 +144,10 @@ public class KVServer implements IKVServer, Runnable {
 					try {
 						byte[] kvAdminMsgBytes = zk.getData(zkServerNodePath, this, null);
 						String kvAdminMsgStr = new String(kvAdminMsgBytes, StandardCharsets.UTF_8);
-						// HERE Process kv admin message
+						// System.out.println("#######################################");
+						// System.out.println("KVServer getData constructor watcher");
+						// System.out.println(kvAdminMsgStr);
+						// System.out.println("#######################################");
 						processKVAdminMesage(kvAdminMsgStr);
 					} catch (KeeperException | InterruptedException e) {
 						logger.error(e);
@@ -152,6 +155,10 @@ public class KVServer implements IKVServer, Runnable {
 				}
 			}, null);
 			String kvAdminMsgStr = new String(kvAdminMsgBytes, StandardCharsets.UTF_8);
+			// System.out.println("#######################################");
+			// System.out.println("KVServer getData constructor");
+			// System.out.println(kvAdminMsgStr);
+			// System.out.println("#######################################");
 			processKVAdminMesage(kvAdminMsgStr);
 		} catch (KeeperException | InterruptedException e) {
 			logger.error(e);
@@ -330,6 +337,10 @@ public class KVServer implements IKVServer, Runnable {
 		serverStatus = DistributedServerStatus.STOP;
 	}
 
+	public DistributedServerStatus getServerStatus (){
+		return serverStatus;
+	}
+
 	@Override
 	public void lockWrite(){ 
 		logger.info("KVServer acquiring write lock, rejecting client write requests.");
@@ -372,7 +383,7 @@ public class KVServer implements IKVServer, Runnable {
 		// send KVAdminMessage with KV pairs data
 		KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutOfRange);
 		String zkDestServerNodePath = zkRootNodePath + "/" + targetName;
-		zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, true).getVersion());
+		zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
 		// Leaving critical region and releasing write lock
 		unlockWrite();
 		return true;
@@ -417,8 +428,8 @@ public class KVServer implements IKVServer, Runnable {
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
 		String msgType = recvMsg.getMessageTypeString();
 		if (msgType == "UPDATE"){
-			this.metadataList = recvMsg.getMessageMetadata();
-			this.serverMetadata = metadataList.get(serverName);
+			this.serverMetadatasMap = recvMsg.getMessageMetadata();
+			this.serverMetadata = serverMetadatasMap.get(serverName);
 		}
 		// TODO move data to proper KVServers
 		// ??? How do we know target name ???
@@ -427,8 +438,13 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	@Override
-	public Map<String, Metadata> getMetaData(){
-		return metadataList;
+	public Metadata getServerMetadata(){
+		return serverMetadata;
+	}
+
+	@Override
+	public Map<String, Metadata> getServerMetadatasMap(){
+		return serverMetadatasMap;
 	}
 
 	@Override
@@ -436,7 +452,15 @@ public class KVServer implements IKVServer, Runnable {
 		return diskStorage.getKVOutOfRange(serverMetadata.start, serverMetadata.stop);
 	}
 
+	public boolean distributed(){
+		return distributed;
+	}
+
 	public void processKVAdminMesage (String kvAdminMsgStr){
+		// empty message content
+		if (kvAdminMsgStr.equals(""))
+			return;
+		// create KVAdminMessage and perform actions according to message type
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
 		switch(recvMsg.getMessageType()){
 			case INIT:			// INIT + metadata + null
@@ -444,16 +468,16 @@ public class KVServer implements IKVServer, Runnable {
 					setMetadata(kvAdminMsgStr);
 				break;
 			case START:			// START + null + null
-				this.start();
+				start();
 				break;
 			case STOP:			// STOP + null + null
-				this.stop();
+				stop();
 				break;
 			case UPDATE:		// UPDATE + metadata + null
 				setMetadata(kvAdminMsgStr);
 				break;
 			case SHUTDOWN:		// SHUTDOWN + null + null
-				this.close();
+				close();
 				break;
 			case TRANSFER_KV:	// TRANSFER_KV + null + kv-pairs
 				receiveKVData(kvAdminMsgStr);
@@ -464,12 +488,23 @@ public class KVServer implements IKVServer, Runnable {
 
 	public static void main(String[] args) throws IOException {
 		try {
-			new LogSetup("logs/server.log", Level.ALL);
-			int port = Integer.parseInt(args[0]);
-			int cacheSize = Integer.parseInt(args[1]);
-			String strategy = args[2];
-			KVServer kvServer = new KVServer(port, cacheSize, strategy);
-			kvServer.run();
+			new LogSetup("logs/server.log", Level.OFF);
+			// create non-distributed KVServer instance
+			try{
+				int port = Integer.parseInt(args[0]);
+				int cacheSize = Integer.parseInt(args[1]);
+				String strategy = args[2];
+				KVServer kvServer = new KVServer(port, cacheSize, strategy);
+				kvServer.run();
+			}
+			// create distributed KVServer instance
+			catch (NumberFormatException e){
+				String serverName = args[0];
+				int zkPort = Integer.parseInt(args[1]);
+				String zkHostname = args[2];
+				KVServer kvServer = new KVServer(serverName, zkPort, zkHostname);
+				kvServer.run();
+			}
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");

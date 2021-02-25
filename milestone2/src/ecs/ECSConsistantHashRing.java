@@ -6,6 +6,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
+import javax.swing.text.Style;
+
 /**This class contains a Hash Ring which stores the **/
 public class ECSConsistantHashRing {
 
@@ -18,20 +20,18 @@ public class ECSConsistantHashRing {
     private Object ExceptionInInitializerError;
     private Object RuntimeException;
 
-    public ECSConsistantHashRing(List<String> ServerNames, boolean init) throws Throwable {
-        hashRingSize = ServerNames.size();
-        if (init){
-            initializeHashRing(ServerNames);
-        }
+    public ECSConsistantHashRing() throws Throwable {
+
     }
 
 
     public void initializeHashRing(List<String> ServerNames) throws Throwable {
-        if (ServerNames == null){
+        if (ServerNames.isEmpty()){
             logger.error("Please reset the list of input server Names");
             return;
         }
 
+        hashRingSize = ServerNames.size();
         for(int i=0; i < hashRingSize; i++){
             /** Assume server name are in the format of ip:port **/
             String serverName = ServerNames.get(i);
@@ -67,7 +67,7 @@ public class ECSConsistantHashRing {
         BigInteger ECSNodeID = NametoHashConverter(node.getNodeName());
         int newElementIndex = -1;
 
-        for (int i=0; i < hashRingSize; i++){
+        for (int i=0; i < this.hashRingSize; i++){
             int compare = ECSNodeID.compareTo(keyArray.get(i));
             if (compare == 0){
                 //same as the input integer
@@ -79,10 +79,13 @@ public class ECSConsistantHashRing {
                 break;
             }else if(compare == 1){
                 //ecsnodeid > keyarray node id
+                newElementIndex = hashRingSize;
+                keyArray.add(hashRingSize,ECSNodeID);
+                break;
             }
         }
 
-        hashRingSize+=1;
+        this.hashRingSize += 1;
         int nextIndex = (newElementIndex+1)%hashRingSize;
         int preIndex = (newElementIndex==0) ?hashRingSize-1: newElementIndex-1;
         String[] hashRange = createHashRange(ECSNodeID.toString(),keyArray.get(nextIndex).toString());
@@ -169,6 +172,7 @@ public class ECSConsistantHashRing {
         int preIndex = (index==0) ?hashRingSize-1: index-1;
         HashRing.get(keyArray.get(nextIndex).toString()).setPreNodeID(keyArray.get(preIndex).toString());
         HashRing.get(keyArray.get(preIndex).toString()).setNextNodeID(keyArray.get(nextIndex).toString());
+        keyArray.remove(index);
 
         hashRingSize -=1;
         IECSNode delNode = HashRing.remove(nodeID.toString());

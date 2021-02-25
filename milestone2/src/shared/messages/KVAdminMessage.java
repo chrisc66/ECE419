@@ -35,7 +35,7 @@ public class KVAdminMessage {
 		TRANSFER_KV        	// KVServer data transfer
     }
 
-    private final static String separator = "/////";
+    private final static String separator = "/";
     private KVAdminType messageType;
     private Map<String, Metadata> messageMetadata;  // servername, metadata
     private Map<String, String> messageKVData;      // key, value
