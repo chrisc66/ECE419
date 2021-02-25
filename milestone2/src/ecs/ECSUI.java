@@ -1,17 +1,25 @@
 package ecs;
 
 import app_kvECS.ECSClient;
-import app_kvECS.IECSClient;
-import logger.LogSetup;
-import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class ECSUI{
 
     private boolean stop = false;
     private BufferedReader stdin;
+    private int numberOfNodes = 0;
+    static ECSClient ecsClient;
+
+    public ECSUI(String arg) {
+        ecsClient = new ECSClient(arg);
+    }
+
 
     public void run() throws Exception{
         while(!stop) {
@@ -26,7 +34,39 @@ public class ECSUI{
             }
         }
     }
-    private void handleCommand(String cmdLine) throws Exception{}
+    private void handleCommand(String cmdLine) throws Exception {
+        String[] tokens = cmdLine.split("\\s+");
+        if (tokens[0].equals("addNodes")) {
+            if (tokens.length == 2) {
+                Collection<IECSNode> nodes = ecsClient.addNodes(Integer.parseInt(tokens[1]), "", 0);
+            }
+        } else if (tokens[0].equals("addNode")) {
+            IECSNode node = ecsClient.addNode("", 0);
+        } else if (tokens[0].equals("start")) {
+            ecsClient.start();
+        } else if (tokens[0].equals("stop")) {
+            ecsClient.stop();
+        } else if (tokens[0].equals("shutDown")) {
+            ecsClient.shutdown();
+        } else if (tokens[0].equals("removeNode")) {
+            List<String> removeServerList = new ArrayList<>();
+            for (int i =1; i < tokens.length; i++) {
+                removeServerList.add(tokens[i]);
+            }
+            ecsClient.removeNodes(removeServerList);
+        }
+    }
 
+    public static void main(String[] args) throws Exception{
+        try {
+            ECSUI ecsui = new ECSUI(args[0]);
+            ecsui.run();
+        }
+        catch (Exception e){
+            System.out.println("Error! ECSClient terminated!");
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
 
 }

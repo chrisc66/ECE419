@@ -1,30 +1,35 @@
 package app_kvECS;
 
+import ecs.ECSConsistantHashRing;
+import ecs.ECSNode;
+import ecs.ECSUI;
+import ecs.IECSNode;
+import logger.LogSetup;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.zookeeper.*;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.server.ServerConfig;
+import org.apache.zookeeper.server.ZooKeeperServerMain;
+import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
+
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
-import ecs.*;
-import logger.LogSetup;
-
-import org.apache.zookeeper.*;
-import org.apache.zookeeper.server.*;
-import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
-import org.apache.zookeeper.Watcher.Event.KeeperState;
-import org.apache.zookeeper.data.Stat;
-import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
-
 public class ECSClient implements IECSClient{
 
     private static Logger logger = Logger.getRootLogger();
+    private static final String PROMPT = "ECS> ";
     private ECSConsistantHashRing hashRingDB;
     private String sourceConfigPath;
     private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>(); // all servers in conf, string = ip:port
     private ECSUI ECSClientUI;
     private List<String> curServers = new ArrayList<>();    // running INUSE
     private Object ExceptionInInitializerError;
+    private boolean stop = false;
+    private BufferedReader stdin;
     
     private static final String zkRootNodePath = "/StorageServerRoot";
     private static final String serverJar = "m2-server.jar";
@@ -40,7 +45,7 @@ public class ECSClient implements IECSClient{
 
     public void ECSInitialization(int count) {
         try{
-            ECSClientUI = new ECSUI();
+//            ECSClientUI = new ECSUI();
             hashRingDB = new ECSConsistantHashRing(addNodesByName(count),true);
             initializeZooKeeper();
             // TODO call addNodes
@@ -267,14 +272,62 @@ public class ECSClient implements IECSClient{
         return hashRingDB.getHashRing().get(Key);
     }
 
+    public void run() throws Exception{
+        while(!stop) {
+            stdin = new BufferedReader(new InputStreamReader(System.in));
+            System.out.print(PROMPT);
+            try {
+                String cmdLine = stdin.readLine();
+                this.handleCommand(cmdLine);
+            }
+            catch (IOException e) {
+                stop = true;
+                printError("No response - Application terminated ");
+            }
+        }
+    }
+
+    private void printError(String error){
+        System.out.println("Error! " +  error);
+    }
+
+    private void handleCommand(String cmdLine) throws Exception {
+        String[] tokens = cmdLine.split("\\s+");
+        if (tokens[0].equals("addNodes")) {
+            if (tokens.length == 2) {
+                Collection<IECSNode> nodes = addNodes(Integer.parseInt(tokens[1]), "", 0);
+            }
+        } else if (tokens[0].equals("addNode")) {
+            IECSNode node = addNode("", 0);
+        } else if (tokens[0].equals("start")) {
+            start();
+        } else if (tokens[0].equals("stop")) {
+            stop();
+        } else if (tokens[0].equals("shutDown")) {
+            shutdown();
+        } else if (tokens[0].equals("removeNode")) {
+            List<String> removeServerList = new ArrayList<>();
+            for (int i =1; i < tokens.length; i++) {
+                removeServerList.add(tokens[i]);
+            }
+            removeNodes(removeServerList);
+        } else {
+            printError("Unknown command");
+            logger.error("Unknown command: " + tokens[0]);
+        }
+    }
 
     public static void main(String[] args) {
         try {
             new LogSetup("logs/ecs.log", Level.ALL);
+            if (args.length == 0) {
+                args = new String[1];
+                args[0] = "ecs.config";
+            }
             String configFilePath = args[0];
             ECSClient app = new ECSClient(configFilePath);
             app.ECSInitialization(4);
-            app.ECSClientUI.run();
+            app.run();
         }
         catch (IOException e) {
             logger.error("Error! Unable to initialize ECS logger!");
