@@ -144,9 +144,14 @@ public interface IKVServer {
     public boolean moveData(String[] hashRange, String targetName) throws Exception;
 
     /**
-     * Get metadata (information of all servers) for distributed servers. 
+     * Get metadata for current distributed server. 
      */
-    public Map<String, Metadata> getMetaData();
+    public Metadata getServerMetadata();
+
+    /**
+     * Get metadata map for all distributed servers. 
+     */
+    public Map<String, Metadata> getServerMetadatasMap();
 
     /**
      * Get the KV pairs that are stored but not responsible by the KVServer.

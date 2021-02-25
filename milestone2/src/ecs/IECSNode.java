@@ -16,8 +16,7 @@ public interface IECSNode {
     enum STATUS{
         OFFLINE,    // nodes sitting in ecs config not added
         IDLE,       // nodes added but not started
-        INUSE,      // nodes started
-        STOP        // nodes shutdown 
+        INUSE       // nodes started 
     }
 
     /**

@@ -1,6 +1,8 @@
 package shared.communication;
 
 import app_kvServer.KVServer;
+import app_kvServer.IKVServer.DistributedServerStatus;
+
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
 import shared.messages.KVMessage;
@@ -10,8 +12,12 @@ import shared.messages.Metadata;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -170,26 +176,22 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         String sendMsgKey = message.getKey();   // return the same key as received message
         String sendMsgValue = "";
 
-        // TODO handle SERVER_STOPPED
-
-        // check if server is write locked
-        if (kvServer.getWriteLock()){
-            sendMsgType = StatusType.SERVER_WRITE_LOCK;
+        // Verify that KVServer is started
+        if (kvServer.distributed() && kvServer.getServerStatus() != DistributedServerStatus.START){
+            sendMsgType = StatusType.SERVER_STOPPED;
+            logger.info("SERVER_STOPPED: KVServer is not ready for connection");
             return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
         }
 
-        // TODO handle SERVER_NOT_RESPONSIBLE
-
         switch(message.getStatus()){
-            // TODO server return messages
-            // SERVER_STOPPED
-            // SERVER_WRITE_LOCK
-            // SERVER_NOT_RESPONSIBLE
             case GET: 
                 // Aquire key-value pair from the server
                 try {
-                    if (!checkKey(message.getKey())) {
-                        return new KVMessageClass(sendMsgType, sendMsgKey, getMetadata().toString());
+                    // check if server is responsible for this KV pair
+                    if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
+                        sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
+                        logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                        return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                     }
                     sendMsgValue = kvServer.getKV(message.getKey());
                     sendMsgType = StatusType.GET_SUCCESS;
@@ -201,10 +203,19 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 }
                 break;
             case PUT: 
-                // Identify status type and store key-value pair on the server
-                if (!checkKey(message.getKey())) {
-                    return new KVMessageClass(sendMsgType, sendMsgKey, getMetadata().toString());
+                // check if server is write locked
+                if (kvServer.distributed() && kvServer.getWriteLock()){
+                    sendMsgType = StatusType.SERVER_WRITE_LOCK;
+                    logger.info("SERVER_WRITE_LOCK: Server is write locked");
+                    return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                 }
+                // check if server is responsible for this KV pair
+                if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
+                    sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
+                    logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                    return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
+                }
+                // Identify status type and store key-value pair on the server
                 if (!message.getValue().equals("")){    // PUT
                     // check if key-value pair is already stored
                     try {
@@ -234,9 +245,21 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     }
                 }
                 else {  // DELETE
+                    // check if server is write locked
+                    if (kvServer.distributed() && kvServer.getWriteLock()){
+                        sendMsgType = StatusType.SERVER_WRITE_LOCK;
+                        logger.info("SERVER_WRITE_LOCK: Server is write locked");
+                        return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
+                    }
+                    // check if server is responsible for this KV pair
+                    if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
+                        sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
+                        logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                        return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
+                    }
                     try {
                         boolean ret = kvServer.deleteKV(message.getKey());
-                        if (ret){
+                        if (ret) {
                             sendMsgType = StatusType.DELETE_SUCCESS;
                             logger.info("DELETE_SUCCESS: Value is deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
                         }
@@ -254,44 +277,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
             case DISCONNECT:
                 open = false;
                 sendMsgType = StatusType.DISCONNECT;
-                logger.info("PUT_SUCCESS: Value is stored on server");
+                logger.info("DISCONNECT: Disconnect from client");
                 break;
-            // /** 
-            //  * Below messages are for kv-pair data transfer between two KVServers (sender and receiver)
-            //  * 1. Sender sends data transfer start, receiver sends back acknowledgement
-            //  * 2. Sender sends data transfer content (one pair at a time), receiver sends back acknowledgement
-            //  * 3. Sender sends data transfer stop, receiver sends back acknowledgement
-            //  */
-            // case DATA_TRANSFER_START:
-            //     kvServer.aquireWriteLock();
-            //     sendMsgType = StatusType.DATA_TRANSFER_START_ACK;
-            //     break;
-            // case DATA_TRANSFER_START_ACK:
-            //     kvServer.aquireWriteLock();
-            //     sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
-            //     break;
-            // case DATA_TRANSFER_CONTENT:
-            //     sendMsgType = StatusType.DATA_TRANSFER_CONTENT_ACK;
-            //     // TODO
-            //     // sendMsgKey = kvServer.getKV();
-            //     // sendMsgValue = kvServer.getKV();
-            //     break;
-            // case DATA_TRANSFER_CONTENT_ACK:
-            //     sendMsgType = StatusType.DATA_TRANSFER_CONTENT;
-            //     kvServer.putKV(message.getKey(), message.getValue());
-            //     break;
-            // case DATA_TRANSFER_STOP:
-            //     kvServer.releaseWriteLock();
-            //     sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
-            //     open = false;
-            //     break;
-            // case DATA_TRANSFER_STOP_ACK:
-            //     kvServer.releaseWriteLock();
-            //     sendMsgType = StatusType.DATA_TRANSFER_STOP_ACK;
-            //     open = false;
-            //     break;
             default:
-                // Server only handles GET and PUT, not handling other message types
+                // Server only handles GET, PUT and DISCONNECT, not handling other message types
                 throw new IllegalStateException("Received an unsupported messaage. Server only handles 'GET' and 'PUT' KVMessages.");
         }
 
@@ -335,14 +324,64 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     /**
      * check if request key is in current server hashing range
      */
-    public boolean checkKey(String key) throws NoSuchAlgorithmException {
-        // BigInteger key_hash = mdKey(key);
-        // if (key_hash.compareTo(kvServer.serverMetadata.start) == 1 && key_hash.compareTo(kvServer.serverMetadata.stop) != 1) {
-        //     return true;
+    public boolean keyWithinRange(String key) {
+
+        Map<String, Metadata> metadataMap = kvServer.getServerMetadatasMap();
+        List<BigInteger> hashRing = new ArrayList<>();
+        Iterator it = metadataMap.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry entry = (Map.Entry)it.next();
+			String serverName = (String) entry.getKey(); 
+            Metadata metadata = (Metadata) entry.getValue();
+            hashRing.add(metadata.start);
+		}
+        Collections.sort(hashRing);
+        BigInteger key_hash;
+        try {
+            key_hash = mdKey(key);
+        } catch (NoSuchAlgorithmException e){
+            return false;
+        }
+        int i;
+        for (i = hashRing.size() - 1; i >= 0; i --){
+            int compare = key_hash.compareTo(hashRing.get(i));
+            if (compare >= 0){
+                break;   
+            }
+        }
+        int compare = hashRing.get(i).compareTo(kvServer.getServerMetadata().start);
+        return (compare == 0);
+
+        // final BigInteger md5_max = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        // final BigInteger md5_min = new BigInteger("00000000000000000000000000000000");
+        // BigInteger key_hash;
+        // try {
+        //     key_hash = mdKey(key);
+        // }
+        // catch (NoSuchAlgorithmException e){
+        //     logger.error("NoSuchAlgorithmException occured!", e);
+        //     return false;
+        // }
+        // Metadata metadata = kvServer.getServerMetadata();
+        // // start < stop
+        // if (metadata.start.compareTo(metadata.stop) == -1){
+        //     // hash >= start && hash <= end
+        //     if (key_hash.compareTo(metadata.start) > -1 && key_hash.compareTo(metadata.stop) < 1) {
+        //         return true;
+        //     }
+        // }
+        // // start >= stop
+        // else {
+        //     // hash >= start && hash <= md5_max
+        //     if (key_hash.compareTo(metadata.start) > -1 && key_hash.compareTo(md5_max) < 1) {
+        //         return true;
+        //     }
+        //     // hash >= md5_min && hash <= end
+        //     else if (key_hash.compareTo(md5_min) > -1 && key_hash.compareTo(metadata.stop) < 1) {
+        //         return true;
+        //     }
         // }
         // return false;
-        // TODO implement metadata
-        return true;
     }
 
     /**
@@ -351,15 +390,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
      */
 
     public BigInteger mdKey (String key) throws NoSuchAlgorithmException {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] md_key = md.digest(key.getBytes());
-            BigInteger md_key_bi = new BigInteger(1, md_key);
-            return md_key_bi;
-        } catch (NoSuchAlgorithmException e) {
-            logger.error("NoSuchAlgorithmException occured!");
-            throw new NoSuchAlgorithmException();
-        }
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] md_key = md.digest(key.getBytes());
+        return new BigInteger(1, md_key);
     }
 
     /**
@@ -369,7 +402,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         //metadata may need to be global
         //otherwise the thread of KVcomminicationServer would use same metadata all the time
         JSONObject metadata_jo = new JSONObject();
-        Map<String, Metadata> metadataMap = kvServer.getMetaData();
+        Map<String, Metadata> metadataMap = kvServer.getServerMetadatasMap();
         int count = 0;
         Iterator it = metadataMap.entrySet().iterator();
 		while (it.hasNext()) {

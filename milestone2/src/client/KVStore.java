@@ -195,6 +195,9 @@ public class KVStore implements KVCommInterface, Runnable {
 		kvCommunication.send(kvmessage);
 		KVMessage msg = kvCommunication.receive();
 		if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
+			System.out.println("**********************************");
+			System.out.println("KVMessage: SERVER_NOT_RESPONSIBLE");
+			System.out.println("**********************************");
 			updateServer(msg, key);
 			kvCommunication.send(kvmessage);
 			msg = kvCommunication.receive();
