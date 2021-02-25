@@ -62,10 +62,6 @@ public class ECSNode implements IECSNode{
         status = STATUS.IDLE;
     }
 
-    public void setStatustoSTOP(){
-        status = STATUS.STOP;
-    }
-
     @Override
     public void updateNodeDataBehind(String endRange){
         hashRange[1]= endRange;
