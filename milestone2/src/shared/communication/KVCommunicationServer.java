@@ -191,6 +191,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
                         sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
                         logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                        sendMsgValue = getMetadata().toString();
                         return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                     }
                     sendMsgValue = kvServer.getKV(message.getKey());
@@ -203,7 +204,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 }
                 break;
             case PUT: 
-                // check if server is write locked
+                // // check if server is write locked
                 if (kvServer.distributed() && kvServer.getWriteLock()){
                     sendMsgType = StatusType.SERVER_WRITE_LOCK;
                     logger.info("SERVER_WRITE_LOCK: Server is write locked");
@@ -213,6 +214,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                 if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
                     sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
                     logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                    sendMsgValue = getMetadata().toString();
                     return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                 }
                 // Identify status type and store key-value pair on the server
@@ -255,6 +257,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
                         sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
                         logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                        sendMsgValue = getMetadata().toString();
                         return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                     }
                     try {
@@ -296,7 +299,15 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         while (open) {
             try {
                 KVMessage recvMsg = receive();          // listening / waiting on receive()
+                // System.out.println("=========================================");
+                // System.out.println("KVServer receive KVMessage");
+                // System.out.println(recvMsg.toString());
+                // System.out.println("=========================================");
                 KVMessage sendMsg = process(recvMsg);
+                // System.out.println("=========================================");
+                // System.out.println("KVServer send KVMessage");
+                // System.out.println(sendMsg.toString());
+                // System.out.println("=========================================");
                 send(sendMsg);
             }
             catch (IOException e) {
@@ -326,62 +337,23 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
      */
     public boolean keyWithinRange(String key) {
 
-        Map<String, Metadata> metadataMap = kvServer.getServerMetadatasMap();
-        List<BigInteger> hashRing = new ArrayList<>();
-        Iterator it = metadataMap.entrySet().iterator();
-		while (it.hasNext()) {
-			Map.Entry entry = (Map.Entry)it.next();
-			String serverName = (String) entry.getKey(); 
-            Metadata metadata = (Metadata) entry.getValue();
-            hashRing.add(metadata.start);
-		}
-        Collections.sort(hashRing);
-        BigInteger key_hash;
+        BigInteger start = kvServer.getServerMetadata().start;
+        BigInteger stop = kvServer.getServerMetadata().stop;
+        BigInteger mdKey;
         try {
-            key_hash = mdKey(key);
+            mdKey = mdKey(key);
         } catch (NoSuchAlgorithmException e){
             return false;
         }
-        int i;
-        for (i = hashRing.size() - 1; i >= 0; i --){
-            int compare = key_hash.compareTo(hashRing.get(i));
-            if (compare >= 0){
-                break;   
-            }
-        }
-        int compare = hashRing.get(i).compareTo(kvServer.getServerMetadata().start);
-        return (compare == 0);
 
-        // final BigInteger md5_max = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-        // final BigInteger md5_min = new BigInteger("00000000000000000000000000000000");
-        // BigInteger key_hash;
-        // try {
-        //     key_hash = mdKey(key);
-        // }
-        // catch (NoSuchAlgorithmException e){
-        //     logger.error("NoSuchAlgorithmException occured!", e);
-        //     return false;
-        // }
-        // Metadata metadata = kvServer.getServerMetadata();
-        // // start < stop
-        // if (metadata.start.compareTo(metadata.stop) == -1){
-        //     // hash >= start && hash <= end
-        //     if (key_hash.compareTo(metadata.start) > -1 && key_hash.compareTo(metadata.stop) < 1) {
-        //         return true;
-        //     }
-        // }
-        // // start >= stop
-        // else {
-        //     // hash >= start && hash <= md5_max
-        //     if (key_hash.compareTo(metadata.start) > -1 && key_hash.compareTo(md5_max) < 1) {
-        //         return true;
-        //     }
-        //     // hash >= md5_min && hash <= end
-        //     else if (key_hash.compareTo(md5_min) > -1 && key_hash.compareTo(metadata.stop) < 1) {
-        //         return true;
-        //     }
-        // }
-        // return false;
+        // START <= STOP && key > START && key < STOP
+        // START >= STOP && key > START && key > STOP
+        // START >= STOP && key < START && key < STOP
+        if ((start.compareTo(stop) !=  1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) == -1) || 
+            (start.compareTo(stop) != -1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) ==  1) || 
+            (start.compareTo(stop) != -1) && (mdKey.compareTo(start) == -1 && mdKey.compareTo(stop) == -1) )
+            return true;
+        return false;
     }
 
     /**

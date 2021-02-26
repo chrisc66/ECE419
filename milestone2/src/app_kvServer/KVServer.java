@@ -7,8 +7,10 @@ import shared.messages.Metadata;
 import shared.messages.KVAdminMessage.KVAdminType;
 import logger.LogSetup;
 import DiskStorage.DiskStorage;
+import ecs.IECSNode;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.CountDownLatch;
@@ -44,12 +46,13 @@ public class KVServer implements IKVServer, Runnable {
 	private static final String filePreFix = "persistanceDB.properties";		// storage file prefix
 
 	// M2: Distributed server config
-	private static boolean distributed;											// flag to record KVServer running in distributed or non-distributed mode
-	private static DistributedServerStatus serverStatus;						// status of current running KVServer instance
-	private static String serverName;											// KVServer name in the format of ip:port
-	private static Map<String, Metadata> serverMetadatasMap;					// metadata for every running distributed KVServer instances
-	private static Metadata serverMetadata;										// metadata for current instance of KVServer 
-	private static boolean writeLock;											// lock server from KVClient write operation 
+	private boolean distributed;											// flag to record KVServer running in distributed or non-distributed mode
+	private DistributedServerStatus serverStatus;							// status of current running KVServer instance
+	private String serverName;												// KVServer name in the format of ip:port
+	private String serverNameHash;											// KVServer name in the format of ip:port
+	private Map<String, Metadata> serverMetadatasMap;						// metadata for every running distributed KVServer instances
+	private Metadata serverMetadata;										// metadata for current instance of KVServer 
+	private boolean writeLock;												// lock server from KVClient write operation 
 
 	// M2: ZooKeeper config
 	private ZooKeeper zk;														// ZooKeeper client instance
@@ -107,6 +110,8 @@ public class KVServer implements IKVServer, Runnable {
 		/* M2: distributed KVServer data members */
 		this.distributed = true;
 		this.writeLock = false;
+		this.serverMetadatasMap = new HashMap<>();
+		this.serverNameHash = diskStorage.mdKey(serverName).toString();
 		/* M2: ZooKeeper data */
 		this.zkServerNodePath = zkRootNodePath+"/"+serverName;
 		this.zkHostname = zkHostname;
@@ -144,7 +149,7 @@ public class KVServer implements IKVServer, Runnable {
 						byte[] kvAdminMsgBytes = zk.getData(zkServerNodePath, this, null);
 						String kvAdminMsgStr = new String(kvAdminMsgBytes, StandardCharsets.UTF_8);
 						// System.out.println("#######################################");
-						// System.out.println("KVServer getData constructor watcher");
+						// System.out.println("KVServer receive KVAdminMessage - getData constructor watcher");
 						// System.out.println(kvAdminMsgStr);
 						// System.out.println("#######################################");
 						processKVAdminMesage(kvAdminMsgStr);
@@ -155,7 +160,7 @@ public class KVServer implements IKVServer, Runnable {
 			}, null);
 			String kvAdminMsgStr = new String(kvAdminMsgBytes, StandardCharsets.UTF_8);
 			// System.out.println("#######################################");
-			// System.out.println("KVServer getData constructor");
+			// System.out.println("KVServer receive KVAdminMessage - KVServer getData constructor");
 			// System.out.println(kvAdminMsgStr);
 			// System.out.println("#######################################");
 			processKVAdminMesage(kvAdminMsgStr);
@@ -358,10 +363,10 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	@Override
-	public boolean moveData(String[] hashRange, String targetName) throws Exception{
+	public boolean moveData(){
 		// get start and stop big integer value
-		BigInteger start = new BigInteger(hashRange[0]);
-		BigInteger stop = new BigInteger(hashRange[1]);
+		BigInteger start = serverMetadata.start;
+		BigInteger stop = serverMetadata.stop;
 		// Entering critical region and acquire write lock
 		lockWrite();
 		// get out of range KV pairs and remove from disk storage
@@ -370,19 +375,22 @@ public class KVServer implements IKVServer, Runnable {
 		while (it.hasNext()) {
 			Map.Entry kvPair = (Map.Entry)it.next();
 			String key = (String) kvPair.getKey(); 
-			if (!diskStorage.mdKeyWithinRange(diskStorage.mdKey(key), start, stop)){
-                System.out.println("Error: I should not reach here");
+			BigInteger mdKey = diskStorage.mdKey(key);
+			if (diskStorage.mdKeyWithinRange(mdKey, start, stop)){
 				logger.error("Error: I should not reach here");
-				kvOutOfRange.remove(key);
             }
 			else {
 				diskStorage.delelteKV(key);
 			}
 		}
 		// send KVAdminMessage with KV pairs data
-		KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutOfRange);
-		String zkDestServerNodePath = zkRootNodePath + "/" + targetName;
-		zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
+		Metadata targetMetadata = serverMetadatasMap.get(stop.toString());
+		String targetName = zkRootNodePath + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
+		try {
+			sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutOfRange, targetName);
+		} catch (InterruptedException | KeeperException e){
+			logger.error(e);
+		}
 		// Leaving critical region and releasing write lock
 		unlockWrite();
 		return true;
@@ -426,14 +434,15 @@ public class KVServer implements IKVServer, Runnable {
 	public void setMetadata(String kvAdminMsgStr){
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
 		String msgType = recvMsg.getMessageTypeString();
-		if (msgType == "UPDATE"){
-			this.serverMetadatasMap = recvMsg.getMessageMetadata();
-			this.serverMetadata = serverMetadatasMap.get(serverName);
+		this.serverMetadatasMap = recvMsg.getMessageMetadata();
+
+		for (String name : serverMetadatasMap.keySet()){
+			Metadata metadata = serverMetadatasMap.get(name);
 		}
-		// TODO move data to proper KVServers
-		// ??? How do we know target name ???
-		// ??? is Metadata transferable in string?
-		// moveData(hashRange, targetName)
+		this.serverMetadata = serverMetadatasMap.get(serverNameHash);
+		
+		// move data to proper KVServers
+		moveData();
 	}
 
 	@Override
@@ -455,7 +464,7 @@ public class KVServer implements IKVServer, Runnable {
 		return distributed;
 	}
 
-	public void processKVAdminMesage (String kvAdminMsgStr){
+	public void processKVAdminMesage (String kvAdminMsgStr) throws KeeperException, InterruptedException{
 		// empty message content
 		if (kvAdminMsgStr.equals(""))
 			return;
@@ -463,26 +472,44 @@ public class KVServer implements IKVServer, Runnable {
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
 		switch(recvMsg.getMessageType()){
 			case INIT:			// INIT + metadata + null
-				if (serverStatus == DistributedServerStatus.STOP)
-					setMetadata(kvAdminMsgStr);
+				setMetadata(kvAdminMsgStr);
+				// zkRootNodePath + "/" + msgDest
+				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case START:			// START + null + null
 				start();
+				// zkRootNodePath + "/" + msgDest
+				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case STOP:			// STOP + null + null
 				stop();
+				// zkRootNodePath + "/" + msgDest
+				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case UPDATE:		// UPDATE + metadata + null
 				setMetadata(kvAdminMsgStr);
+				// zkRootNodePath + "/" + msgDest
+				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case SHUTDOWN:		// SHUTDOWN + null + null
 				close();
+				// zkRootNodePath + "/" + msgDest
+				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case TRANSFER_KV:	// TRANSFER_KV + null + kv-pairs
 				receiveKVData(kvAdminMsgStr);
 				break;
 			default:
 		}
+	}
+
+	public void sendKVAdminMessage (KVAdminType type, Map<String, Metadata> ECSMetadata, Map<String, String> data, String msgDest) throws KeeperException ,InterruptedException{
+		KVAdminMessage sendMsg = new KVAdminMessage(type, ECSMetadata, data);
+		// System.out.println("#######################################");
+		// System.out.println("KVServer send KVAdminMessage to " + msgDest);
+		// System.out.println(sendMsg);
+		// System.out.println("#######################################");
+		zk.setData(msgDest, sendMsg.toBytes(), zk.exists(msgDest, false).getVersion());
 	}
 
 	public static void main(String[] args) throws IOException {

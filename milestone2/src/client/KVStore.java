@@ -59,7 +59,6 @@ public class KVStore implements KVCommInterface, Runnable {
 	@Override
 	public void connect() throws Exception {
 		try {
-//			md = MessageDigest.getInstance("MD5");
 			clientSocket = new Socket(serverAddress, serverPort);
 			kvCommunication = new KVCommunicationClient(clientSocket);
 			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
@@ -165,9 +164,14 @@ public class KVStore implements KVCommInterface, Runnable {
 	public void updateServer (KVMessage msg, String key) throws NoSuchAlgorithmException, Exception {
 		metadata = msg.getMetadata();
 		BigInteger key_bi = mdKey(key);
-		for (int i = 0; i <metadata.size(); i++ ) {
+		for (int i = 0; i < metadata.size(); i++ ) {
 			Metadata obj = metadata.get(i);
-			if (key_bi.compareTo(obj.start) == 1 && key_bi.compareTo(obj.stop) != 1) {
+			// START <= STOP && key > START && key < STOP
+			// START >= STOP && key > START && key > STOP
+			// START >= STOP && key < START && key < STOP
+			if ((obj.start.compareTo(obj.stop) !=  1) && (key_bi.compareTo(obj.start) ==  1 && key_bi.compareTo(obj.stop) == -1) || 
+				(obj.start.compareTo(obj.stop) != -1) && (key_bi.compareTo(obj.start) ==  1 && key_bi.compareTo(obj.stop) ==  1) || 
+				(obj.start.compareTo(obj.stop) != -1) && (key_bi.compareTo(obj.start) == -1 && key_bi.compareTo(obj.stop) == -1) ){
 				disconnect();
 				String lastServerAddress = serverAddress;
 				int lastServerPort = serverPort;
@@ -192,16 +196,65 @@ public class KVStore implements KVCommInterface, Runnable {
 	 */
 
 	public KVMessage sendKVmessage (KVMessage kvmessage, String key) throws Exception {
+		
+		// System.out.println("=========================================");
+		// System.out.println("KVClient send KVMessage");
+		// System.out.println(kvmessage.toString());
+		// System.out.println("=========================================");
+		
 		kvCommunication.send(kvmessage);
 		KVMessage msg = kvCommunication.receive();
+
+		// System.out.println("=========================================");
+		// System.out.println("KVClient receive KVMessage");
+		// System.out.println(msg.toString());
+		// System.out.println("=========================================");
+
 		if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
-			System.out.println("**********************************");
-			System.out.println("KVMessage: SERVER_NOT_RESPONSIBLE");
-			System.out.println("**********************************");
 			updateServer(msg, key);
+			// System.out.println("=========================================");
+			// System.out.println("SERVER_NOT_RESPONSIBLE: KVClient send KVMessage");
+			// System.out.println(kvmessage.toString());
+			// System.out.println("=========================================");
 			kvCommunication.send(kvmessage);
 			msg = kvCommunication.receive();
+			// System.out.println("=========================================");
+			// System.out.println("KVClient receive KVMessage");
+			// System.out.println(msg.toString());
+			// System.out.println("=========================================");
 		}
 		return msg;
 	}
+
+	/**
+     * check if request key is in current server hashing range
+     */
+    // public boolean keyWithinRange(BigInteger key_hash){
+
+	// 	BigInteger max = new BigInteger(0xffffffffffffffffffffffffffffffff);
+		
+    //     List<BigInteger> hashRing = new ArrayList<>();
+    //     Iterator it = metadata.iterator();
+	// 	while (it.hasNext()) {
+	// 		Metadata entry = (Metadata)it.next();
+    //         hashRing.add(entry.start);
+	// 	}
+    //     Collections.sort(hashRing);
+    //     int i;
+    //     for (i = hashRing.size() - 1; i != 0; i --){
+    //         int compare = key_hash.compareTo(hashRing.get(i));
+	// 		if (compare >= 0){
+    //             break;   
+    //         }
+    //     }
+	// 	int my_idx;
+	// 	for (my_idx = 0; i < hashRing.size(); i ++){
+	// 		Stting servername = serverAddress+":"+serverPort;
+	// 		if (hashRing.get(i).compareTo(metadata.get(my_idx).start) == 0){
+	// 			break;
+	// 		}
+	// 	}
+    //     int compare = hashRing.get(i).compareTo(metadata.get(my_idx).start);
+    //     return (compare == 0);
+    // }
 }

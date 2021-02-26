@@ -2,9 +2,12 @@ package shared.messages;
 
 import java.util.*;
 import java.nio.charset.StandardCharsets;
-
-import org.json.*;
+import java.lang.reflect.Type;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.json.*;
+
+import ecs.ECSNode;
 
 /**
  * KVAdminMessage is used to transfer admin messages between ECS and distributed KVServers.
@@ -25,6 +28,8 @@ public class KVAdminMessage {
     public enum KVAdminType {
         /* Undefined messages */
         UNDEFINED,          // Error: undefined type
+        /* Acknowledgement for previous message */
+        ACK,                // KVServer sends ACK back to ECS
         /* Type representing KVServer status */
         INIT,               // KVServer is created, only respond to ECS
         START,              // KVServer is created, respond to both ECS and KVClient
@@ -43,7 +48,7 @@ public class KVAdminMessage {
     /**
      * Construct KVAdminMessage with message type, metadata and KV data.
      * @param status KVAdminMessage type.
-     * @param metadata KVServer metadata.
+     * @param ECSMetadata KVServer metadata (ECS hash ring).
      * @param data KV pairs data.
      */
     public KVAdminMessage(KVAdminType type, Map<String, Metadata> metadata, Map<String, String> data){
@@ -60,7 +65,9 @@ public class KVAdminMessage {
         String[] tokens = msgString.split(separator);
         this.messageType = getMessageType(tokens[0]);
         Gson gsonObj = new Gson();
-        this.messageMetadata = gsonObj.fromJson(tokens[1], Map.class);
+        Type metadataType = new TypeToken<Map<String, Metadata>>(){}.getType();
+        // Type kvDataType = new TypeToken<Map<String, String>>(){}.getType();
+        this.messageMetadata = gsonObj.fromJson(tokens[1], metadataType);
         this.messageKVData = gsonObj.fromJson(tokens[2], Map.class);
     }
 
@@ -74,6 +81,8 @@ public class KVAdminMessage {
 
     public String getMessageTypeString(){
         switch(messageType){
+            case ACK: 
+                return "ACK";
             case INIT: 
                 return "INIT";
             case START:
@@ -93,6 +102,8 @@ public class KVAdminMessage {
 
     public KVAdminType getMessageType(String type){
         switch(type){
+            case "ACK": 
+                return KVAdminType.ACK;
             case "INIT": 
                 return KVAdminType.INIT;
             case "START":

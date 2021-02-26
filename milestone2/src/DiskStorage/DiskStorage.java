@@ -171,16 +171,24 @@ public class DiskStorage implements DiskStorageInterface{
             String key = (String) kv.getKey(); 
             if (!mdKeyWithinRange(mdKey(key), start, stop)){
                 String value = (String) kv.getValue(); 
-                KVtable.put(key, value);
+                KVOutOfRange.put(key, value);
             }
         }
         return KVOutOfRange;
 	}
 
     public boolean mdKeyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){
-        // mdKey >= start -> 0 or 1
-        // mdKey < stop -> -1
-        return (mdKey.compareTo(start) >= 0 && mdKey.compareTo(stop) < 0);
+        // // mdKey >= start -> 0 or 1
+        // // mdKey < stop -> -1
+        // return (mdKey.compareTo(start) >= 0 && mdKey.compareTo(stop) < 0);
+        // START <= STOP && key > START && key < STOP
+        // START >= STOP && key > START && key > STOP
+        // START >= STOP && key < START && key < STOP
+        if ((start.compareTo(stop) !=  1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) == -1) || 
+            (start.compareTo(stop) != -1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) ==  1) || 
+            (start.compareTo(stop) != -1) && (mdKey.compareTo(start) == -1 && mdKey.compareTo(stop) == -1) )
+            return true;
+        return false;
     }
 
     /**
