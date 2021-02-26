@@ -142,10 +142,12 @@ public class KVMessageClass implements KVMessage, Serializable {
 
     }
 
+    @Override
     public StatusType getStatus(){
         return getStatus(this.statusTypeString);
     }
 
+    @Override
     public StatusType getStatus(String statusTypeString){
         switch(statusTypeString){
             case "GET": 
@@ -179,10 +181,12 @@ public class KVMessageClass implements KVMessage, Serializable {
         }
     }
 
+    @Override
     public String getStatusString(){
         return this.statusTypeString;
     }
 
+    @Override
     public String getStatusString(StatusType statusType){
         switch(statusType){
             case GET: 
@@ -216,24 +220,29 @@ public class KVMessageClass implements KVMessage, Serializable {
         }
     }
 
+    @Override
     public String getKey(){
         return key;
     }
 
+    @Override
     public String getValue(){
         return value;
     }
 
+    @Override
     public byte[] getMessageBytes(){
         return messageBytes;
     }
 
+    @Override
     public String getMessage(){
         return Arrays.toString(messageBytes);
     }
 
+    @Override
     public List<Metadata> getMetadata(){
-        if (statusTypeString != "SERVER_NOT_RESPONSIBLE") {
+        if (statusTypeString.compareTo("SERVER_NOT_RESPONSIBLE") != 0) {
             return null;
         }
         JSONObject metadata_jo = new JSONObject(value);
@@ -242,10 +251,14 @@ public class KVMessageClass implements KVMessage, Serializable {
         while (keys.hasNext()) {
             String key = keys.next();
             JSONObject obj = (JSONObject) metadata_jo.get(key);
-            Metadata temp = new Metadata (obj.getString("host"), obj.getInt("port"), obj.getBigInteger("start"), obj.getBigInteger("stop"));
+            Metadata temp = new Metadata(obj.getString("serverAddress"), obj.getInt("serverPort"), obj.getBigInteger("start"), obj.getBigInteger("stop"));
             metadata_list.add(temp);
         }
         return metadata_list;
+    }
+
+    public String toString (){
+        return statusTypeString + " " + key + " " + value;
     }
 
 }

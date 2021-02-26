@@ -1,6 +1,9 @@
 package ecs;
 
 import org.apache.log4j.Logger;
+
+import shared.messages.Metadata;
+
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -20,9 +23,7 @@ public class ECSConsistantHashRing {
     private Object ExceptionInInitializerError;
     private Object RuntimeException;
 
-    public ECSConsistantHashRing() throws Throwable {
-
-    }
+    public ECSConsistantHashRing() {}
 
 
     public void initializeHashRing(List<String> ServerNames) throws Throwable {
@@ -191,6 +192,18 @@ public class ECSConsistantHashRing {
 
     public HashMap<String, IECSNode> getHashRing(){
         return HashRing;
+    }
+
+    public HashMap<String, Metadata> getMetadata(){
+        HashMap<String, Metadata> metadataMap = new HashMap<>();
+        for (String server : HashRing.keySet()){
+            IECSNode node = HashRing.get(server);
+            BigInteger start = new BigInteger(node.getNodeHashRange()[0]);
+            BigInteger stop = new BigInteger(node.getNodeHashRange()[1]);
+            Metadata metadata = new Metadata(node.getNodeHost(), node.getNodePort(), start, stop);
+            metadataMap.put(server, metadata);
+        }
+        return metadataMap;
     }
 
     public BigInteger NametoHashConverter(String key) throws NoSuchAlgorithmException {

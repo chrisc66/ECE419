@@ -50,11 +50,10 @@ public interface IECSClient {
 
     /**
      * Wait for all nodes to report status or until timeout expires
-     * @param count     number of nodes to wait for
      * @param timeout   the timeout in milliseconds
      * @return  true if all nodes reported successfully, false otherwise
      */
-    public boolean awaitNodes(int count, int timeout) throws Exception;
+    public boolean awaitNodes(int count, int timeout);
 
     /**
      * Removes nodes with names matching the nodeNames array
