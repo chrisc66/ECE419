@@ -41,8 +41,8 @@ public class ECSClient implements IECSClient{
     private BufferedReader stdin;
     
     private static final String zkRootNodePath = "/StorageServerRoot";
-    private static final String serverDir = System.getProperty("user.dir");
-    // private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone2";
+    // private static final String serverDir = System.getProperty("user.dir");
+    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone2";
     private static final String serverJar = "m2-server.jar";
     private static final int zkPort = 2181;
     private static final String zkHost = "localhost";
@@ -146,7 +146,7 @@ public class ECSClient implements IECSClient{
         }
     }
 
-    private List<String> findAllAvaliableServer(){
+    public List<String> findAllAvaliableServer(){
         List<String> avaliableServer = new ArrayList<>();
         Iterator it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
