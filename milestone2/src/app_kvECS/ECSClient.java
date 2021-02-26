@@ -15,6 +15,7 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
+import org.apache.zookeeper.server.admin.AdminServer.AdminServerException;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
@@ -68,7 +69,7 @@ public class ECSClient implements IECSClient{
                     config.parse(zkServerConfPath);
                     ZooKeeperServerMain zkServer = new ZooKeeperServerMain();
                     zkServer.runFromConfig(config);
-                } catch (ConfigException | IOException e){}
+                } catch (ConfigException | IOException | AdminServerException e){}
             }
         };
         Thread zkServer = new Thread(zkServerRun);

@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
-import org.apache.zookeeper.data.Stat;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
