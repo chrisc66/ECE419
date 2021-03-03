@@ -364,7 +364,10 @@ public class KVServer implements IKVServer, Runnable {
 
 	@Override
 	public boolean moveData(){
+		// flag for node addition (move data to back) or deletion (move data to front)
+		boolean moveBack = false;
 		// get start and stop big integer value
+		BigInteger prev = serverMetadata.prev;
 		BigInteger start = serverMetadata.start;
 		BigInteger stop = serverMetadata.stop;
 		// Entering critical region and acquire write lock
@@ -377,7 +380,7 @@ public class KVServer implements IKVServer, Runnable {
 			String key = (String) kvPair.getKey(); 
 			BigInteger mdKey = diskStorage.mdKey(key);
 			if (diskStorage.mdKeyWithinRange(mdKey, start, stop)){
-				logger.error("Error: I should not reach here");
+				moveBack = true;
             }
 			else {
 				diskStorage.delelteKV(key);
@@ -385,6 +388,9 @@ public class KVServer implements IKVServer, Runnable {
 		}
 		// send KVAdminMessage with KV pairs data
 		Metadata targetMetadata = serverMetadatasMap.get(stop.toString());
+		if (moveBack == false){
+			targetMetadata = serverMetadatasMap.get(prev.toString());
+		}
 		String targetName = zkRootNodePath + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 		try {
 			sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutOfRange, targetName);

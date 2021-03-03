@@ -198,9 +198,11 @@ public class ECSConsistantHashRing {
         HashMap<String, Metadata> metadataMap = new HashMap<>();
         for (String server : HashRing.keySet()){
             IECSNode node = HashRing.get(server);
+            BigInteger prev = new BigInteger(node.getPreNodeID());
+            // HERE!!!!!
             BigInteger start = new BigInteger(node.getNodeHashRange()[0]);
             BigInteger stop = new BigInteger(node.getNodeHashRange()[1]);
-            Metadata metadata = new Metadata(node.getNodeHost(), node.getNodePort(), start, stop);
+            Metadata metadata = new Metadata(node.getNodeHost(), node.getNodePort(), prev, start, stop);
             metadataMap.put(server, metadata);
         }
         return metadataMap;

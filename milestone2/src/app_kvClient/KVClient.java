@@ -106,7 +106,8 @@ public class KVClient implements IKVClient {
                     logger.info("Sending PUT message, " + "Key: " + key + ", Value: " + value.toString());
                     if (msg.getStatus() == KVMessage.StatusType.GET_ERROR || 
                         msg.getStatus() == KVMessage.StatusType.PUT_ERROR ||
-                        msg.getStatus() == KVMessage.StatusType.DELETE_ERROR){
+                        msg.getStatus() == KVMessage.StatusType.DELETE_ERROR ||
+                        msg.getStatus() == KVMessage.StatusType.SERVER_STOPPED){
                         printError("Received message: " + msg.getStatusString());
                         logger.error(msg.getStatusString());
                     }

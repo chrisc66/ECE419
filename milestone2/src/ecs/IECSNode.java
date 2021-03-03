@@ -5,6 +5,10 @@ public interface IECSNode {
 
     void setPreNodeID(String toString);
 
+    String getNextNodeID();
+
+    String getPreNodeID();
+
     void setNodeHashRange(String[] hashRange);
 
     String getCurNodeIDStart();
