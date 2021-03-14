@@ -9,8 +9,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-import javax.swing.text.Style;
-
 /**This class contains a Hash Ring which stores the **/
 public class ECSConsistantHashRing {
 

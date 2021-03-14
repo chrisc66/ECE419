@@ -2,12 +2,10 @@ package app_kvServer;
 
 import shared.communication.KVCommunicationServer;
 import shared.messages.KVAdminMessage;
-import shared.messages.KVMessage;
 import shared.messages.Metadata;
 import shared.messages.KVAdminMessage.KVAdminType;
 import logger.LogSetup;
 import DiskStorage.DiskStorage;
-import ecs.IECSNode;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -21,7 +19,6 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -41,7 +38,7 @@ public class KVServer implements IKVServer, Runnable {
 	private ArrayList<Thread> clientThreads;									// list of active client threads (KVCommunicationServer)
 
 	// M1: KVServer disk persistent storage
-	private static DiskStorage diskStorage;										// KVServer persistent disk storage
+	private DiskStorage diskStorage;											// KVServer persistent disk storage
 	private static final String dir = "./data";									// KVServer storage directory on disk file system
 	private static final String filePreFix = "persistanceDB.properties";		// storage file prefix
 
@@ -120,7 +117,7 @@ public class KVServer implements IKVServer, Runnable {
 		// creating ZooKeeper client
 		try{
             final CountDownLatch latch = new CountDownLatch(1);
-			this.zk = new ZooKeeper(zkHostname+":"+zkPort, zkTimeout, new Watcher(){
+			this.zk = new ZooKeeper(this.zkHostname+":"+this.zkPort, zkTimeout, new Watcher(){
                 @Override
                 public void process(WatchedEvent event) {
                     if (event.getState() == KeeperState.SyncConnected)
@@ -374,9 +371,9 @@ public class KVServer implements IKVServer, Runnable {
 		lockWrite();
 		// get out of range KV pairs and remove from disk storage
 		Map<String, String> kvOutOfRange = getKVOutOfRange();
-		Iterator it = kvOutOfRange.entrySet().iterator();
+		Iterator<Map.Entry<String, String>> it = kvOutOfRange.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry kvPair = (Map.Entry)it.next();
+			Map.Entry<String, String> kvPair = it.next();
 			String key = (String) kvPair.getKey(); 
 			BigInteger mdKey = diskStorage.mdKey(key);
 			if (diskStorage.mdKeyWithinRange(mdKey, start, stop)){
@@ -423,9 +420,9 @@ public class KVServer implements IKVServer, Runnable {
 		lockWrite();
 		// Get KV pairs data and store into disk
 		Map<String, String> recvMsgKvData = recvMsg.getMessageKVData();
-		Iterator it = recvMsgKvData.entrySet().iterator();
+		Iterator<Map.Entry<String, String>> it = recvMsgKvData.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry kvPair = (Map.Entry)it.next();
+			Map.Entry<String, String> kvPair = it.next();
 			this.diskStorage.put(kvPair.getKey().toString(), kvPair.getValue().toString());
 		}
 		// Leaving critical region and releasing write lock
@@ -439,12 +436,14 @@ public class KVServer implements IKVServer, Runnable {
 	 */
 	public void setMetadata(String kvAdminMsgStr){
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
-		String msgType = recvMsg.getMessageTypeString();
+		// String msgType = recvMsg.getMessageTypeString();
+		// if (!msgType.equals("INIT") && !msgType.equals("UPDATE")){
+		// 	return;
+		// }
 		this.serverMetadatasMap = recvMsg.getMessageMetadata();
-
-		for (String name : serverMetadatasMap.keySet()){
-			Metadata metadata = serverMetadatasMap.get(name);
-		}
+		// for (String name : serverMetadatasMap.keySet()){
+		// 	Metadata metadata = serverMetadatasMap.get(name);
+		// }
 		this.serverMetadata = serverMetadatasMap.get(serverNameHash);
 		
 		// move data to proper KVServers

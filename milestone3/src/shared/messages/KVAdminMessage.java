@@ -5,9 +5,6 @@ import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Type;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.json.*;
-
-import ecs.ECSNode;
 
 /**
  * KVAdminMessage is used to transfer admin messages between ECS and distributed KVServers.
@@ -66,9 +63,9 @@ public class KVAdminMessage {
         this.messageType = getMessageType(tokens[0]);
         Gson gsonObj = new Gson();
         Type metadataType = new TypeToken<Map<String, Metadata>>(){}.getType();
-        // Type kvDataType = new TypeToken<Map<String, String>>(){}.getType();
+        Type kvDataType = new TypeToken<Map<String, String>>(){}.getType();
         this.messageMetadata = gsonObj.fromJson(tokens[1], metadataType);
-        this.messageKVData = gsonObj.fromJson(tokens[2], Map.class);
+        this.messageKVData = gsonObj.fromJson(tokens[2], kvDataType);
     }
 
     /**

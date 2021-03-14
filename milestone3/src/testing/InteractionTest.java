@@ -1,6 +1,5 @@
 package testing;
 
-import app_kvServer.KVServer;
 import org.junit.Test;
 
 import client.KVStore;

@@ -11,13 +11,7 @@ import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -376,10 +370,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         JSONObject metadata_jo = new JSONObject();
         Map<String, Metadata> metadataMap = kvServer.getServerMetadatasMap();
         int count = 0;
-        Iterator it = metadataMap.entrySet().iterator();
+        Iterator<Map.Entry<String, Metadata>> it = metadataMap.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry entry = (Map.Entry) it.next();
-            String key = (String) entry.getKey(); 
+			Map.Entry<String, Metadata> entry = it.next();
+            // String key = (String) entry.getKey(); 
 			Metadata metadata = (Metadata) entry.getValue();
             JSONObject obj = new JSONObject();
             obj.put("serverAddress", metadata.serverAddress);

@@ -2,9 +2,7 @@ package app_kvECS;
 
 import ecs.ECSConsistantHashRing;
 import ecs.ECSNode;
-import ecs.ECSUI;
 import ecs.IECSNode;
-import jdk.internal.net.http.common.Utils.ServerName;
 import logger.LogSetup;
 import shared.messages.KVAdminMessage;
 import shared.messages.KVAdminMessage.KVAdminType;
@@ -13,14 +11,12 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.server.admin.AdminServer.AdminServerException;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -34,7 +30,6 @@ public class ECSClient implements IECSClient{
     private ECSConsistantHashRing hashRingDB;
     private String sourceConfigPath;
     private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>(); // all servers in conf, string = ip:port
-    private ECSUI ECSClientUI;
     private ArrayList<String> curServers = new ArrayList<>();    // INUSE + IDLE servers
     private Object ExceptionInInitializerError;
     private boolean stop = false;
@@ -148,9 +143,9 @@ public class ECSClient implements IECSClient{
 
     public List<String> findAllAvaliableServer(){
         List<String> avaliableServer = new ArrayList<>();
-        Iterator it = serverStatusMap.entrySet().iterator();
+        Iterator<Map.Entry<String,IECSNode.STATUS>> it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry)it.next();
+            Map.Entry<String,IECSNode.STATUS> pair = it.next();
             if (pair.getValue() == IECSNode.STATUS.INUSE || pair.getValue() == IECSNode.STATUS.IDLE){
                 continue;
             }
@@ -316,7 +311,7 @@ public class ECSClient implements IECSClient{
 			// System.out.println(sshStartCmd);
 			// System.out.println("#######################################");
             try {
-                Process p = Runtime.getRuntime().exec(sshStartCmd);
+                Runtime.getRuntime().exec(sshStartCmd);
                 logger.info("Creating KVServer with command: " + sshStartCmd);
             } catch (IOException e) {
                 logger.error("Error: cannot ssh start storage server node", e);
@@ -487,7 +482,7 @@ public class ECSClient implements IECSClient{
             shutdown();
             System.out.println("Removing application data and logs");
             String rmCmd = "rm -r " + serverDir + "/data/ " + serverDir + "/logs/";
-            Process p = Runtime.getRuntime().exec(rmCmd);
+            Runtime.getRuntime().exec(rmCmd);
             System.out.println("Application exit!");
             System.exit(0);
         } else {
@@ -499,9 +494,9 @@ public class ECSClient implements IECSClient{
 
     public void printServerStatus (){
         System.out.println("Status of all servers loaded from ecs.config");
-        Iterator it = serverStatusMap.entrySet().iterator();
+        Iterator<Map.Entry<String,IECSNode.STATUS>> it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry)it.next();
+            Map.Entry<String,IECSNode.STATUS> pair = it.next();
             String serverName = (String)pair.getKey();
             IECSNode.STATUS serverStatus = (IECSNode.STATUS)pair.getValue();
             String serverStatusStr = "UNDEFINED";

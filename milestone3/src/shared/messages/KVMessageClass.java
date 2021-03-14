@@ -1,7 +1,6 @@
 package shared.messages;
 
 import org.apache.log4j.Logger;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.Serializable;
@@ -16,7 +15,8 @@ import java.util.List;
  */
 public class KVMessageClass implements KVMessage, Serializable {
 
-    private static Logger logger = Logger.getRootLogger();
+    private static final long serialVersionUID = 5485491360977463230L;  // UID required by Serializable class
+    private static final Logger logger = Logger.getRootLogger();
     private static final String DELIMITOR = "D" + "\n"; // "D" = 68, "\n" = 10
     private static final int MAX_KEY_SIZE = 20;
     private static final int MAX_VALUE_SIZE = 120 * 1024;

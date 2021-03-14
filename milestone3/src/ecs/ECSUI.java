@@ -6,20 +6,17 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class ECSUI{
 
     private boolean stop = false;
     private BufferedReader stdin;
-    private int numberOfNodes = 0;
     static ECSClient ecsClient;
 
     public ECSUI(String arg) {
         ecsClient = new ECSClient(arg);
     }
-
 
     public void run() throws Exception{
         while(!stop) {
@@ -34,14 +31,15 @@ public class ECSUI{
             }
         }
     }
+    
     private void handleCommand(String cmdLine) throws Exception {
         String[] tokens = cmdLine.split("\\s+");
         if (tokens[0].equals("addNodes")) {
             if (tokens.length == 2) {
-                Collection<IECSNode> nodes = ecsClient.addNodes(Integer.parseInt(tokens[1]), "", 0);
+                ecsClient.addNodes(Integer.parseInt(tokens[1]), "", 0);
             }
         } else if (tokens[0].equals("addNode")) {
-            IECSNode node = ecsClient.addNode("", 0);
+            ecsClient.addNode("", 0);
         } else if (tokens[0].equals("start")) {
             ecsClient.start();
         } else if (tokens[0].equals("stop")) {
