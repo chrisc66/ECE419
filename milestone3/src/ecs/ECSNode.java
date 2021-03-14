@@ -73,7 +73,6 @@ public class ECSNode implements IECSNode{
         preNodeID = prevRange;
     }
 
-
     @Override
     public void setPreNodeID(String preNodeID) {
         this.preNodeID = preNodeID;
@@ -89,14 +88,15 @@ public class ECSNode implements IECSNode{
         return curNodeID;
     }
 
+    @Override
     public String getNextNodeID() {
         return nextNodeID;
     }
 
+    @Override
     public String getPreNodeID() {
         return preNodeID;
     }
-
 
     @Override
     public String getNodeName() {
@@ -118,6 +118,7 @@ public class ECSNode implements IECSNode{
         return hashRange;
     }
 
+    @Override
     public void setNodeHashRange(String[] hashRange){
         this.hashRange = hashRange;
     }

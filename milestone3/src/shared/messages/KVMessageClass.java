@@ -251,7 +251,7 @@ public class KVMessageClass implements KVMessage, Serializable {
         while (keys.hasNext()) {
             String key = keys.next();
             JSONObject obj = (JSONObject) metadata_jo.get(key);
-            Metadata temp = new Metadata(obj.getString("serverAddress"), obj.getInt("serverPort"), obj.getBigInteger("start"), obj.getBigInteger("stop"));
+            Metadata temp = new Metadata(obj.getString("serverAddress"), obj.getInt("serverPort"), null, obj.getBigInteger("start"), obj.getBigInteger("stop"));
             metadata_list.add(temp);
         }
         return metadata_list;

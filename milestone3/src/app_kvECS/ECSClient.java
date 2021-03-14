@@ -335,11 +335,18 @@ public class ECSClient implements IECSClient{
             return null;
 
         for (String servername : serverStatusMap.keySet()){
+            KVAdminType admMsgType = KVAdminType.UNDEFINED;
             if (serverStatusMap.get(servername) == IECSNode.STATUS.OFFLINE){
                 continue;
             }
+            else if (serverStatusMap.get(servername) == IECSNode.STATUS.IDLE){
+                admMsgType = KVAdminType.INIT;
+            }
+            else {
+                admMsgType = KVAdminType.UPDATE;
+            }
             String zkDestServerNodePath = zkRootNodePath + "/" + servername;
-            KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.INIT, hashRingDB.getMetadata(), null);
+            KVAdminMessage sendMsg = new KVAdminMessage(admMsgType, hashRingDB.getMetadata(), null);
             try {
                 // System.out.println("#######################################");
                 // System.out.println("ECS Client send KVAdminMessage");
@@ -382,6 +389,9 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
+
+        setupNodes(curServers.size(), "NONE", 0);
+
         KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
         for (String server: nodeNames){
             try {
@@ -398,7 +408,9 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
-        setupNodes(curServers.size(), "NONE", 0);
+        
+        // setupNodes(curServers.size(), "NONE", 0);
+
         return true;
     }
 
