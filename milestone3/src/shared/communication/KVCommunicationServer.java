@@ -31,7 +31,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     private static final int BUFFER_SIZE = 1024;
 
     private Socket clientSocket;
-    private KVServer kvServer;
+    private static KVServer kvServer;
     private boolean open;
 
     private InputStream input;
@@ -179,15 +179,15 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 
         switch(message.getStatus()){
             case GET: 
+                // check if server is responsible for this KV pair
+                if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
+                    sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
+                    logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                    sendMsgValue = getMetadata().toString();
+                    return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
+                }
                 // Aquire key-value pair from the server
                 try {
-                    // check if server is responsible for this KV pair
-                    if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
-                        sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
-                        logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
-                        sendMsgValue = getMetadata().toString();
-                        return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
-                    }
                     sendMsgValue = kvServer.getKV(message.getKey());
                     sendMsgType = StatusType.GET_SUCCESS;
                     logger.info("GET_SUCCESS: Value is found on server, key: " + message.getKey());

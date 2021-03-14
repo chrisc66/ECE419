@@ -172,6 +172,10 @@ public class DiskStorage implements DiskStorageInterface{
         return KVOutOfRange;
 	}
 
+    public Map<String, String> getAllKV(){
+		return Collections.synchronizedMap(loadHashMapFromFile());
+	}
+
     public boolean mdKeyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){
         // // mdKey >= start -> 0 or 1
         // // mdKey < stop -> -1

@@ -313,6 +313,7 @@ public class KVServer implements IKVServer, Runnable {
 	@Override
 	public void close(){
 		running = false;
+		serverStatus = DistributedServerStatus.SHUTDOWN;
 		try {
 			for (int i = 0; i < clientThreads.size(); i++){
 				clientThreads.get(i).interrupt();	// interrupt and stop all threads
@@ -360,36 +361,46 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	@Override
-	public boolean moveData(){
-		// flag for node addition (move data to back) or deletion (move data to front)
-		boolean moveBack = false;
-		// get start and stop big integer value
-		BigInteger prev = serverMetadata.prev;
-		BigInteger start = serverMetadata.start;
-		BigInteger stop = serverMetadata.stop;
-		// Entering critical region and acquire write lock
-		lockWrite();
+	public boolean moveData(boolean removeNode){
+		
 		// get out of range KV pairs and remove from disk storage
 		Map<String, String> kvOutOfRange = getKVOutOfRange();
+		
+		if (removeNode){
+			kvOutOfRange = diskStorage.getAllKV();
+		}
+		if (kvOutOfRange.isEmpty()){
+			return true;
+		}
+		
+		// Entering critical region and acquire write lock
+		lockWrite();
+
 		Iterator<Map.Entry<String, String>> it = kvOutOfRange.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, String> kvPair = it.next();
 			String key = (String) kvPair.getKey(); 
-			BigInteger mdKey = diskStorage.mdKey(key);
-			if (diskStorage.mdKeyWithinRange(mdKey, start, stop)){
-				moveBack = true;
-            }
-			else {
-				diskStorage.delelteKV(key);
-			}
+			diskStorage.delelteKV(key);
 		}
+
 		// send KVAdminMessage with KV pairs data
-		Metadata targetMetadata = serverMetadatasMap.get(stop.toString());
-		if (moveBack == false){
+		BigInteger prev = serverMetadata.prev;
+		BigInteger stop = serverMetadata.stop;
+		Metadata targetMetadata = null;
+		if (removeNode){
 			targetMetadata = serverMetadatasMap.get(prev.toString());
 		}
+		else {
+			targetMetadata = serverMetadatasMap.get(stop.toString());
+		}
+
 		String targetName = zkRootNodePath + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 		try {
+			System.out.println("---------------------------");
+			System.out.println("Sending KV pairs to another KVServer");
+			System.out.println(targetName);
+			System.out.println(kvOutOfRange);
+			System.out.println("---------------------------");
 			sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutOfRange, targetName);
 		} catch (InterruptedException | KeeperException e){
 			logger.error(e);
@@ -407,7 +418,6 @@ public class KVServer implements IKVServer, Runnable {
 	 * @param kvAdminMsgStr KVAdminMessage string
 	 */
 	public void receiveKVData(String kvAdminMsgStr){
-		// TODO: store KV pair into disk storage
 		// Create KVAdminMessage from input string
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
 		KVAdminType recvMsgType = recvMsg.getMessageType();
@@ -434,20 +444,15 @@ public class KVServer implements IKVServer, Runnable {
 	 * 
 	 * @param kvAdminMsgStr KVAdminMessage string
 	 */
-	public void setMetadata(String kvAdminMsgStr){
-		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
-		// String msgType = recvMsg.getMessageTypeString();
-		// if (!msgType.equals("INIT") && !msgType.equals("UPDATE")){
-		// 	return;
-		// }
-		this.serverMetadatasMap = recvMsg.getMessageMetadata();
-		// for (String name : serverMetadatasMap.keySet()){
-		// 	Metadata metadata = serverMetadatasMap.get(name);
-		// }
-		this.serverMetadata = serverMetadatasMap.get(serverNameHash);
+	public void setMetadata(String kvAdminMsgStr, boolean removeNode){
+		if (!removeNode){
+			KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
+			this.serverMetadatasMap = recvMsg.getMessageMetadata();
+			this.serverMetadata = serverMetadatasMap.get(serverNameHash);
+		}
 		
 		// move data to proper KVServers
-		moveData();
+		moveData(removeNode);
 	}
 
 	@Override
@@ -475,12 +480,17 @@ public class KVServer implements IKVServer, Runnable {
 			return;
 		// create KVAdminMessage and perform actions according to message type
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
+		// System.out.println("====================================");
+		// System.out.println("Received KVAdmin Message ");
+		// System.out.println(recvMsg.getMessageTypeString());
+		// System.out.println(recvMsg.toString());
+		// System.out.println("====================================");
 		switch(recvMsg.getMessageType()){
-			case INIT:			// INIT + metadata + null
-				setMetadata(kvAdminMsgStr);
-				// zkRootNodePath + "/" + msgDest
-				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
-				break;
+			// case INIT:			// INIT + metadata + null
+			// 	setMetadata(kvAdminMsgStr);
+			// 	// zkRootNodePath + "/" + msgDest
+			// 	// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
+			// 	break;
 			case START:			// START + null + null
 				start();
 				// zkRootNodePath + "/" + msgDest
@@ -492,7 +502,12 @@ public class KVServer implements IKVServer, Runnable {
 				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case UPDATE:		// UPDATE + metadata + null
-				setMetadata(kvAdminMsgStr);
+				setMetadata(kvAdminMsgStr, false);
+				// zkRootNodePath + "/" + msgDest
+				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
+				break;
+			case UPDATE_REMOVE:	// UPDATE_REMOVE + metadata + null
+				setMetadata(kvAdminMsgStr, true);
 				// zkRootNodePath + "/" + msgDest
 				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
@@ -502,6 +517,7 @@ public class KVServer implements IKVServer, Runnable {
 				// sendKVAdminMessage(KVAdminType.ACK, null, null, serverName);
 				break;
 			case TRANSFER_KV:	// TRANSFER_KV + null + kv-pairs
+				System.out.println(kvAdminMsgStr);
 				receiveKVData(kvAdminMsgStr);
 				break;
 			default:
@@ -518,24 +534,23 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	public static void main(String[] args) throws IOException {
-		try {
-			new LogSetup("logs/server.log", Level.OFF);
-			// create non-distributed KVServer instance
-			try{
-				int port = Integer.parseInt(args[0]);
-				int cacheSize = Integer.parseInt(args[1]);
-				String strategy = args[2];
-				KVServer kvServer = new KVServer(port, cacheSize, strategy);
-				kvServer.run();
-			}
-			// create distributed KVServer instance
-			catch (NumberFormatException e){
-				String serverName = args[0];
-				int zkPort = Integer.parseInt(args[1]);
-				String zkHostname = args[2];
-				KVServer kvServer = new KVServer(serverName, zkPort, zkHostname);
-				kvServer.run();
-			}
+		// create non-distributed KVServer instance
+		try{
+			int port = Integer.parseInt(args[0]);
+			int cacheSize = Integer.parseInt(args[1]);
+			String logString = "logs/server." + args[0] + ".log";
+			new LogSetup(logString, Level.ALL);
+			String strategy = args[2];
+			KVServer kvServer = new KVServer(port, cacheSize, strategy);
+			kvServer.run();
+		}
+		// create distributed KVServer instance
+		catch (NumberFormatException e){
+			String serverName = args[0];
+			int zkPort = Integer.parseInt(args[1]);
+			String zkHostname = args[2];
+			KVServer kvServer = new KVServer(serverName, zkPort, zkHostname);
+			kvServer.run();
 		}
 		catch (IOException e) {
 			logger.error("Error! Unable to initialize server logger!");

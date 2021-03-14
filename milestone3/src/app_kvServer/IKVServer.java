@@ -140,7 +140,7 @@ public interface IKVServer {
     /**
      * ECS-related moveData, move the given hashRange to the server going by the targetName
      */
-    public boolean moveData();
+    public boolean moveData(boolean removeNode);
 
     /**
      * Get metadata for current distributed server. 

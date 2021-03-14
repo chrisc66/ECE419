@@ -26,11 +26,12 @@ public class KVAdminMessage {
         /* Undefined messages */
         UNDEFINED,          // Error: undefined type
         /* Acknowledgement for previous message */
-        ACK,                // KVServer sends ACK back to ECS
+        // ACK,                // KVServer sends ACK back to ECS
         /* Type representing KVServer status */
-        INIT,               // KVServer is created, only respond to ECS
+        // INIT,               // KVServer is created, only respond to ECS
         START,              // KVServer is created, respond to both ECS and KVClient
         UPDATE,             // KVServer needs to update metadata
+        UPDATE_REMOVE,      // KVServer needs to update metadata when removing a node
         STOP,               // KVServer is stopped, only respond to ECS
         SHUTDOWN,           // KVServer is stopped, respond to neither ECS nor KVClient 
         /* Data transfer betwen distributed KVServers */
@@ -78,14 +79,16 @@ public class KVAdminMessage {
 
     public String getMessageTypeString(){
         switch(messageType){
-            case ACK: 
-                return "ACK";
-            case INIT: 
-                return "INIT";
+            // case ACK: 
+            //     return "ACK";
+            // case INIT: 
+            //     return "INIT";
             case START:
                 return "START";
             case UPDATE:
                 return "UPDATE";
+            case UPDATE_REMOVE:
+                return "UPDATE_REMOVE";
             case STOP:
                 return "STOP";
             case SHUTDOWN:
@@ -99,14 +102,16 @@ public class KVAdminMessage {
 
     public KVAdminType getMessageType(String type){
         switch(type){
-            case "ACK": 
-                return KVAdminType.ACK;
-            case "INIT": 
-                return KVAdminType.INIT;
+            // case "ACK": 
+            //     return KVAdminType.ACK;
+            // case "INIT": 
+            //     return KVAdminType.INIT;
             case "START":
                 return KVAdminType.START;
             case "UPDATE":
                 return KVAdminType.UPDATE;
+            case "UPDATE_REMOVE":
+                return KVAdminType.UPDATE_REMOVE;
             case "STOP":
                 return KVAdminType.STOP;
             case "SHUTDOWN":
