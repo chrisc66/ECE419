@@ -179,23 +179,32 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 
         switch(message.getStatus()){
             case GET: 
+                System.out.println("Here 0");
+                System.out.println("GET received");
                 // check if server is responsible for this KV pair
                 if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
+                    System.out.println("Here 1");
                     sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
                     logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                    System.out.println("Here 2");
                     sendMsgValue = getMetadata().toString();
+                    System.out.println("Here 3");
                     return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                 }
                 // Aquire key-value pair from the server
                 try {
+                    System.out.println("Here 4");
                     sendMsgValue = kvServer.getKV(message.getKey());
+                    System.out.println("Here 5");
                     sendMsgType = StatusType.GET_SUCCESS;
                     logger.info("GET_SUCCESS: Value is found on server, key: " + message.getKey());
                 }
                 catch (Exception e) {
+                    System.out.println("Here 6");
                     sendMsgType = StatusType.GET_ERROR;
                     logger.info("GET_ERROR: Value not found on server, key: " + message.getKey());
                 }
+                System.out.println("Here 7");
                 break;
             case PUT: 
                 // // check if server is write locked
@@ -354,7 +363,6 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
      * helper function for getting MD5 hash key
      * may need to move to some shared class for being visible for both client and server
      */
-
     public BigInteger mdKey (String key) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("MD5");
         byte[] md_key = md.digest(key.getBytes());

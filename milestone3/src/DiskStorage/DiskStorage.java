@@ -164,7 +164,7 @@ public class DiskStorage implements DiskStorageInterface{
         Map<String, String> KVOutOfRange = new HashMap<String, String>();
         for (Map.Entry<String, String> kv : KVtable.entrySet()) { 
             String key = (String) kv.getKey(); 
-            if (!mdKeyWithinRange(mdKey(key), start, stop)){
+            if (!keyWithinRange(mdKey(key), start, stop)){
                 String value = (String) kv.getValue(); 
                 KVOutOfRange.put(key, value);
             }
@@ -172,21 +172,36 @@ public class DiskStorage implements DiskStorageInterface{
         return KVOutOfRange;
 	}
 
+    public Map<String, String> getKVWithinRange(BigInteger start, BigInteger stop){
+		Map<String, String> KVtable = Collections.synchronizedMap(loadHashMapFromFile());
+        Map<String, String> KVWithinRange = new HashMap<String, String>();
+        for (Map.Entry<String, String> kv : KVtable.entrySet()) { 
+            String key = (String) kv.getKey(); 
+            if (keyWithinRange(mdKey(key), start, stop)){
+                String value = (String) kv.getValue(); 
+                KVWithinRange.put(key, value);
+            }
+        }
+        return KVWithinRange;
+	}
+
     public Map<String, String> getAllKV(){
 		return Collections.synchronizedMap(loadHashMapFromFile());
 	}
 
-    public boolean mdKeyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){
+    public boolean keyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){
         // // mdKey >= start -> 0 or 1
         // // mdKey < stop -> -1
         // return (mdKey.compareTo(start) >= 0 && mdKey.compareTo(stop) < 0);
         // START <= STOP && key > START && key < STOP
         // START >= STOP && key > START && key > STOP
         // START >= STOP && key < START && key < STOP
+        System.out.println("111");
         if ((start.compareTo(stop) !=  1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) == -1) || 
             (start.compareTo(stop) != -1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) ==  1) || 
             (start.compareTo(stop) != -1) && (mdKey.compareTo(start) == -1 && mdKey.compareTo(stop) == -1) )
             return true;
+        System.out.println("222");
         return false;
     }
 
