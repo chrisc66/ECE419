@@ -11,6 +11,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
@@ -96,27 +97,6 @@ public class ECSClient implements IECSClient{
             if (zk.exists(zkRootNodePath, false) == null) {
                 zk.create(zkRootNodePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             }
-            // TODO Maybe this is a good location for getChildren watcher
-            zk.getChildren(zkRootNodePath, new Watcher () {
-                @Override
-                public void process(WatchedEvent event) {
-                    // if (event.getType() == EventType.ChildWatchRemoved){
-                    //     awaitNodes(1, 50000);
-                    //     ArrayList<String> missingChildren = new ArrayList<>();
-                    //     for (String server : curServers){
-                    //         try {
-                    //             String zkChildNodePath = zkRootNodePath + "/" + server;
-                    //             if (zk.exists(zkChildNodePath, false) == null){
-                    //                 missingChildren.add(server);
-                    //             }
-                    //         } catch (KeeperException | InterruptedException e){
-                    //             logger.error(e);
-                    //         }
-                    //     }
-                    //     removeNodes(missingChildren);
-                    // }
-                }
-            }, null);
         } catch (KeeperException | InterruptedException e) {
             logger.error(e);
         }
@@ -254,20 +234,19 @@ public class ECSClient implements IECSClient{
 
     @Override
     public IECSNode addNode(String cacheStrategy, int cacheSize) {
-        
-        // Create KVAdminMessage with type UPDATE and metadata
-        // Send message with zk.setData() to correct KVServer znode
-
         Random rand = new Random();
         List<String> avaliableServer = findAllAvaliableServer();
         int randIndex = rand.nextInt(avaliableServer.size());
         String newServerName = avaliableServer.get(randIndex);
         
+        return addNode(cacheStrategy, cacheSize, newServerName);
+    }
+
+    public IECSNode addNode(String cacheStrategy, int cacheSize, String newServerName) {
         serverStatusMap.put(newServerName, IECSNode.STATUS.IDLE);
         curServers.add(newServerName);
-
+        
         ECSNode newNode = null;
-
         if (hashRingDB.getHashRing().isEmpty()){
             List<String> newServerNameList = new ArrayList<>();
             newServerNameList.add(newServerName);
@@ -305,6 +284,13 @@ public class ECSClient implements IECSClient{
         awaitNodes(1, 4000);
         setupNodes(curServers.size(), cacheStrategy, cacheSize, null);
         awaitNodes(1, 4000);
+
+        try {
+            detectZkNodeCrash(newServerName);
+        }
+        catch (KeeperException | InterruptedException | IllegalArgumentException e) {
+            logger.error(e);
+        }
 
         assertTrue(newNode != null);
         return newNode;
@@ -385,7 +371,7 @@ public class ECSClient implements IECSClient{
     }
 
     @Override
-    public boolean removeNodes(Collection<String> nodeNames) {
+    public boolean removeNodes(Collection<String> nodeNames, boolean fromZk) {
         // Create KVAdminMessage with type UPDATE_REMOVE and metadata
         // Send message with zk.setData() to correct KVServer znode
         for (String server : nodeNames){
@@ -398,9 +384,11 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
-
+        
         setupNodes(curServers.size(), "NONE", 0, null);
-        setupNodes(nodeNames.size(), "NONE", 0, nodeNames);
+        if (!fromZk){
+            setupNodes(nodeNames.size(), "NONE", 0, nodeNames);
+        }
         awaitNodes(1, 2000);
 
         KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
@@ -429,10 +417,37 @@ public class ECSClient implements IECSClient{
         return hashRingDB.getHashRing().get(Key);
     }
 
+    public void detectZkNodeCrash(final String zkChildPath) throws KeeperException, InterruptedException, IllegalArgumentException {
+        String zkNodePath = zkRootNodePath + "/" + zkChildPath;
+        zk.exists(zkNodePath, new Watcher () {
+            @Override
+            public void process(WatchedEvent event) {
+                try {
+                    if (event.getType() == EventType.NodeDeleted){
+                        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        System.out.println("Child removed !!!");
+                        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        List<String> removeNode = new ArrayList<String>();
+                        removeNode.add(zkChildPath);
+                        removeNodes(removeNode, true);
+                        awaitNodes(1, 2000);
+                        addNode("NONE", 0, zkChildPath);
+                    }
+                    else {
+                        detectZkNodeCrash(zkChildPath);
+                    }
+                }
+                catch (KeeperException | InterruptedException | IllegalArgumentException e) {
+                    logger.error(e);
+                }
+            }
+        });
+    }
+
     public void run() throws Exception{
         while(!stop) {
-            stdin = new BufferedReader(new InputStreamReader(System.in));
             System.out.print(PROMPT);
+            stdin = new BufferedReader(new InputStreamReader(System.in));
             try {
                 String cmdLine = stdin.readLine();
                 this.handleCommand(cmdLine);
@@ -482,7 +497,7 @@ public class ECSClient implements IECSClient{
             for (int i = 1; i < tokens.length; i++) {
                 removeServerList.add(tokens[i]);
             }
-            removeNodes(removeServerList);
+            removeNodes(removeServerList, false);
         } else if (tokens[0].equals("status")) {
             printServerStatus();
         } else if (tokens[0].equals("help")) {

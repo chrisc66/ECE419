@@ -170,13 +170,11 @@ public class KVServer implements IKVServer, Runnable {
 
 	private boolean storageFileExist(){
 		File dirFIle = new File(dir);
-		if (!dirFIle.exists()){
-			return false;
+		if (dirFIle.exists()){
+			File dummyStorageFile = new File(dir+'/'+filePreFix+"."+serverName);
+			return dummyStorageFile.exists();
 		}
-		else {
-			File dummyFile = new File(dir+'/'+filePreFix+serverName);
-			return dummyFile.exists();
-		}
+		return false;
 	}
 
 	@Override

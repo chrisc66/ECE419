@@ -90,7 +90,7 @@ public class KVStore implements KVCommInterface, Runnable {
 			}
 			catch (Exception e) {
 				System.out.println("Error! Close Socket Failed!");
-				logger.error("Close Socket Failed!", e);
+				logger.error("Close Socket Failed!");
 			}
 		}
 	}
