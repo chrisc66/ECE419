@@ -11,13 +11,7 @@ import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,7 +31,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     private static final int BUFFER_SIZE = 1024;
 
     private Socket clientSocket;
-    private KVServer kvServer;
+    private static KVServer kvServer;
     private boolean open;
 
     private InputStream input;
@@ -185,15 +179,15 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
 
         switch(message.getStatus()){
             case GET: 
+                // check if server is responsible for this KV pair
+                if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
+                    sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
+                    logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
+                    sendMsgValue = getMetadata().toString();
+                    return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
+                }
                 // Aquire key-value pair from the server
                 try {
-                    // check if server is responsible for this KV pair
-                    if (kvServer.distributed() && !keyWithinRange(message.getKey())) {
-                        sendMsgType = StatusType.SERVER_NOT_RESPONSIBLE;
-                        logger.info("SERVER_NOT_RESPONSIBLE: KVServer is not responsible for this KV pair");
-                        sendMsgValue = getMetadata().toString();
-                        return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
-                    }
                     sendMsgValue = kvServer.getKV(message.getKey());
                     sendMsgType = StatusType.GET_SUCCESS;
                     logger.info("GET_SUCCESS: Value is found on server, key: " + message.getKey());
@@ -376,10 +370,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         JSONObject metadata_jo = new JSONObject();
         Map<String, Metadata> metadataMap = kvServer.getServerMetadatasMap();
         int count = 0;
-        Iterator it = metadataMap.entrySet().iterator();
+        Iterator<Map.Entry<String, Metadata>> it = metadataMap.entrySet().iterator();
 		while (it.hasNext()) {
-			Map.Entry entry = (Map.Entry) it.next();
-            String key = (String) entry.getKey(); 
+			Map.Entry<String, Metadata> entry = it.next();
+            // String key = (String) entry.getKey(); 
 			Metadata metadata = (Metadata) entry.getValue();
             JSONObject obj = new JSONObject();
             obj.put("serverAddress", metadata.serverAddress);

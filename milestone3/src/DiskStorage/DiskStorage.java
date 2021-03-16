@@ -1,15 +1,10 @@
 package DiskStorage;
 
 import org.apache.log4j.Logger;
-import DiskStorage.KeyValuePair;
 import java.util.*;
 
 import java.io.*;
 import java.math.BigInteger;
-import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.BiPredicate;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -167,7 +162,7 @@ public class DiskStorage implements DiskStorageInterface{
     public Map<String, String> getKVOutOfRange(BigInteger start, BigInteger stop){
 		Map<String, String> KVtable = Collections.synchronizedMap(loadHashMapFromFile());
         Map<String, String> KVOutOfRange = new HashMap<String, String>();
-        for (Map.Entry kv : KVtable.entrySet()) { 
+        for (Map.Entry<String, String> kv : KVtable.entrySet()) { 
             String key = (String) kv.getKey(); 
             if (!mdKeyWithinRange(mdKey(key), start, stop)){
                 String value = (String) kv.getValue(); 
@@ -175,6 +170,10 @@ public class DiskStorage implements DiskStorageInterface{
             }
         }
         return KVOutOfRange;
+	}
+
+    public Map<String, String> getAllKV(){
+		return Collections.synchronizedMap(loadHashMapFromFile());
 	}
 
     public boolean mdKeyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){

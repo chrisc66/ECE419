@@ -8,7 +8,6 @@ import client.KVStore;
 import junit.framework.TestCase;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Random;
 
 public class PerformanceTest extends TestCase {
@@ -163,7 +162,7 @@ public class PerformanceTest extends TestCase {
     @Test
     public void testPerf_0100() {
         int iteration = 100000;
-        int numBytes = 16;
+        // int numBytes = 16;
         String getOutput = "";
         try {
             kvClient.put(key, data_16_str);

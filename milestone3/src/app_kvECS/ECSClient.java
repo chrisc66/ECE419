@@ -2,9 +2,7 @@ package app_kvECS;
 
 import ecs.ECSConsistantHashRing;
 import ecs.ECSNode;
-import ecs.ECSUI;
 import ecs.IECSNode;
-import jdk.internal.net.http.common.Utils.ServerName;
 import logger.LogSetup;
 import shared.messages.KVAdminMessage;
 import shared.messages.KVAdminMessage.KVAdminType;
@@ -13,14 +11,14 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.server.admin.AdminServer.AdminServerException;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -34,7 +32,6 @@ public class ECSClient implements IECSClient{
     private ECSConsistantHashRing hashRingDB;
     private String sourceConfigPath;
     private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>(); // all servers in conf, string = ip:port
-    private ECSUI ECSClientUI;
     private ArrayList<String> curServers = new ArrayList<>();    // INUSE + IDLE servers
     private Object ExceptionInInitializerError;
     private boolean stop = false;
@@ -42,8 +39,8 @@ public class ECSClient implements IECSClient{
     
     private static final String zkRootNodePath = "/StorageServerRoot";
     // private static final String serverDir = System.getProperty("user.dir");
-    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone2";
-    private static final String serverJar = "m2-server.jar";
+    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone3";
+    private static final String serverJar = "m3-server.jar";
     private static final int zkPort = 2181;
     private static final String zkHost = "localhost";
     private static final int zkTimeout = 20000;
@@ -148,9 +145,9 @@ public class ECSClient implements IECSClient{
 
     public List<String> findAllAvaliableServer(){
         List<String> avaliableServer = new ArrayList<>();
-        Iterator it = serverStatusMap.entrySet().iterator();
+        Iterator<Map.Entry<String,IECSNode.STATUS>> it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry)it.next();
+            Map.Entry<String,IECSNode.STATUS> pair = it.next();
             if (pair.getValue() == IECSNode.STATUS.INUSE || pair.getValue() == IECSNode.STATUS.IDLE){
                 continue;
             }
@@ -257,96 +254,115 @@ public class ECSClient implements IECSClient{
 
     @Override
     public IECSNode addNode(String cacheStrategy, int cacheSize) {
-        List<IECSNode> newNode = (List<IECSNode>) addNodes(1,cacheStrategy,cacheSize);
-        return newNode.get(0);
+        
+        // Create KVAdminMessage with type UPDATE and metadata
+        // Send message with zk.setData() to correct KVServer znode
+
+        Random rand = new Random();
+        List<String> avaliableServer = findAllAvaliableServer();
+        int randIndex = rand.nextInt(avaliableServer.size());
+        String newServerName = avaliableServer.get(randIndex);
+        
+        serverStatusMap.put(newServerName, IECSNode.STATUS.IDLE);
+        curServers.add(newServerName);
+
+        ECSNode newNode = null;
+
+        if (hashRingDB.getHashRing().isEmpty()){
+            List<String> newServerNameList = new ArrayList<>();
+            newServerNameList.add(newServerName);
+            try {
+                hashRingDB.initializeHashRing(newServerNameList);
+                newNode = this.hashRingDB.getECSNodeFromName(newServerName);
+            } catch (Throwable e){
+                logger.error(e);
+            }
+        }
+        else{
+            try {
+                newNode = this.hashRingDB.getECSNodeFromName(newServerName);
+                this.hashRingDB.addNewNodeByNode(newNode);
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
+        }
+
+        // ssh start KVServer instance remotely
+        String cdCmd = " cd " + serverDir + "; ";
+        String startServerCmd = " java -jar " + serverDir + "/" + serverJar + " " + newServerName + " " + zkPort + " "  + zkHost;
+        String nohupCmd = " nohup " + startServerCmd + " &> logs/nohup." + newServerName + ".out &";
+        String sshStartCmd = "ssh -o StrictHostKeyChecking=no -n " + zkHost + cdCmd + nohupCmd;
+        try {
+            Runtime.getRuntime().exec(sshStartCmd);
+            logger.info("Creating KVServer with command: " + sshStartCmd);
+        } catch (IOException e) {
+            logger.error("Error: cannot ssh start storage server node", e);
+            System.out.println("Error: cannot ssh start storage server node");
+        }
+
+        awaitNodes(1, 4000);
+        setupNodes(curServers.size(), cacheStrategy, cacheSize, null);
+        awaitNodes(1, 4000);
+
+        assertTrue(newNode != null);
+        return newNode;
     }
 
     @Override
     public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
-        // Create KVAdminMessage with type UPDATE and metadata
-        // Send message with zk.setData() to correct KVServer znode
-        
-        // select x number of servers from the avalibale server list
         if (curServers.size() == serverStatusMap.size()){
             logger.error("All servers in the configurations are deployed");
             return null;
         }
 
-        Random rand = new Random();
-        List<String> avaliableServer = findAllAvaliableServer();
-        List<IECSNode> addServerName = new ArrayList<>();
+        List<IECSNode> newNodes = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
-            int randIndex = rand.nextInt(avaliableServer.size());
-            String newServerName = avaliableServer.get(randIndex);
-            serverStatusMap.put(newServerName, IECSNode.STATUS.IDLE);
-            curServers.add(newServerName);
-            avaliableServer.remove(randIndex);
-
-            if (hashRingDB.getHashRing().isEmpty()){
-                List<String> newServerNameList = new ArrayList<>();
-                newServerNameList.add(newServerName);
-                try {
-                    hashRingDB.initializeHashRing(newServerNameList);
-                    ECSNode newNode = this.hashRingDB.getECSNodeFromName(newServerName);
-                    addServerName.add(newNode);
-                } catch (Throwable e){
-                    logger.error(e);
-                }
-            }
-            else{
-                try {
-                    ECSNode newNode = this.hashRingDB.getECSNodeFromName(newServerName);
-                    addServerName.add(newNode);
-                    this.hashRingDB.addNewNodeByNode(newNode);
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                }
-            }
-
-            // ssh start KVServer instance remotely
-            String cdCmd = " cd " + serverDir + "; ";
-            String startServerCmd = " java -jar " + serverDir + "/" + serverJar + " " + newServerName + " " + zkPort + " "  + zkHost;
-            String nohupCmd = " nohup " + startServerCmd + " &> logs/nohup." + newServerName + ".out &";
-            String sshStartCmd = "ssh -o StrictHostKeyChecking=no -n " + zkHost + cdCmd + nohupCmd;
-            // System.out.println("#######################################");
-            // System.out.println("ECS Client remote start KVServer");
-			// System.out.println(sshStartCmd);
-			// System.out.println("#######################################");
-            try {
-                Process p = Runtime.getRuntime().exec(sshStartCmd);
-                logger.info("Creating KVServer with command: " + sshStartCmd);
-            } catch (IOException e) {
-                logger.error("Error: cannot ssh start storage server node", e);
-                System.out.println("Error: cannot ssh start storage server node");
-            }
+            IECSNode newNode = addNode(cacheStrategy, cacheSize);
+            newNodes.add(newNode);
         }
 
-        setupNodes(count, cacheStrategy, cacheSize);
-
-        return addServerName;
+        return newNodes;
     }
 
     @Override
-    public Collection<IECSNode> setupNodes(int count, String cacheStrategy, int cacheSize) {
-        if (count > serverStatusMap.size()) 
+    public Collection<IECSNode> setupNodes(int count, String cacheStrategy, int cacheSize, Collection<String> removeNodeName) {
+
+        Collection<String> nodesToSetup = null;
+        if (removeNodeName == null){ // node addition
+            nodesToSetup = serverStatusMap.keySet();
+        }
+        else {  // node removal
+            nodesToSetup = removeNodeName;
+        }
+
+        if (count > nodesToSetup.size())
             return null;
 
-        for (String servername : serverStatusMap.keySet()){
-            if (serverStatusMap.get(servername) == IECSNode.STATUS.OFFLINE){
-                continue;
+        for (String servername : nodesToSetup){
+            KVAdminType admMsgType = KVAdminType.UNDEFINED;
+            if (removeNodeName == null){
+                if (serverStatusMap.get(servername) == IECSNode.STATUS.OFFLINE)
+                    continue;
+                admMsgType = KVAdminType.UPDATE;
             }
+            else {
+                admMsgType = KVAdminType.UPDATE_REMOVE;
+            }
+
             String zkDestServerNodePath = zkRootNodePath + "/" + servername;
-            KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.INIT, hashRingDB.getMetadata(), null);
+            KVAdminMessage sendMsg = new KVAdminMessage(admMsgType, hashRingDB.getMetadata(), null);
             try {
                 // System.out.println("#######################################");
-                // System.out.println("ECS Client send KVAdminMessage");
+                // System.out.println("setupNodes: line 360");
+                // System.out.println("ECS Client sending KVAdminMessage");
+                // System.out.println(zkDestServerNodePath);
                 // System.out.println(sendMsg.toString());
                 // System.out.println("#######################################");
                 while (zk.exists(zkDestServerNodePath, false) == null){
-                    awaitNodes(count, 2000);
+                    awaitNodes(count, 3000);
                 }
                 zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
             } catch (KeeperException | InterruptedException e){
@@ -370,9 +386,9 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean removeNodes(Collection<String> nodeNames) {
-        // Create KVAdminMessage with type UPDATE and metadata
+        // Create KVAdminMessage with type UPDATE_REMOVE and metadata
         // Send message with zk.setData() to correct KVServer znode
-        for (String server: nodeNames){
+        for (String server : nodeNames){
             try {
                 serverStatusMap.put(server, IECSNode.STATUS.OFFLINE);
                 hashRingDB.removeNodebyServerName(server);
@@ -382,14 +398,15 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
+
+        setupNodes(curServers.size(), "NONE", 0, null);
+        setupNodes(nodeNames.size(), "NONE", 0, nodeNames);
+        awaitNodes(1, 2000);
+
         KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
-        for (String server: nodeNames){
+        for (String server : nodeNames){
             try {
                 String zkDestServerNodePath = zkRootNodePath + "/" + server;
-                // System.out.println("#######################################");
-                // System.out.println("ECS Client send KVAdminMessage");
-                // System.out.println(sendMsg.toString());
-                // System.out.println("#######################################");
                 if (zk.exists(zkDestServerNodePath, false) != null){
                     zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
                 }
@@ -398,7 +415,7 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
-        setupNodes(curServers.size(), "NONE", 0);
+
         return true;
     }
 
@@ -473,11 +490,12 @@ public class ECSClient implements IECSClient{
         } else if (tokens[0].equals("quit")) {
             System.out.println("Shutdown all storage servers before exiting");
             shutdown();
+            stop = true;
             System.out.println("Removing application data and logs");
             String rmCmd = "rm -r " + serverDir + "/data/ " + serverDir + "/logs/";
-            Process p = Runtime.getRuntime().exec(rmCmd);
+            Runtime.getRuntime().exec(rmCmd);
             System.out.println("Application exit!");
-            System.exit(0);
+            // System.exit(0);
         } else {
             printError("Unknown command");
             printHelp();
@@ -487,9 +505,9 @@ public class ECSClient implements IECSClient{
 
     public void printServerStatus (){
         System.out.println("Status of all servers loaded from ecs.config");
-        Iterator it = serverStatusMap.entrySet().iterator();
+        Iterator<Map.Entry<String,IECSNode.STATUS>> it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry)it.next();
+            Map.Entry<String,IECSNode.STATUS> pair = it.next();
             String serverName = (String)pair.getKey();
             IECSNode.STATUS serverStatus = (IECSNode.STATUS)pair.getValue();
             String serverStatusStr = "UNDEFINED";

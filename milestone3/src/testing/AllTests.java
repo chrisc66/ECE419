@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import org.apache.log4j.Level;
 
-import app_kvECS.ECSClient;
 import app_kvServer.KVServer;
 import junit.framework.Test;
 import junit.framework.TestSuite;

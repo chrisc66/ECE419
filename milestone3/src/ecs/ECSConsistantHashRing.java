@@ -9,11 +9,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-import javax.swing.text.Style;
-
 /**This class contains a Hash Ring which stores the **/
 public class ECSConsistantHashRing {
-
 
     /**The server names are defined as Address+port**/
     private static Logger logger = Logger.getRootLogger();
@@ -24,7 +21,6 @@ public class ECSConsistantHashRing {
     private Object RuntimeException;
 
     public ECSConsistantHashRing() {}
-
 
     public void initializeHashRing(List<String> ServerNames) throws Throwable {
         if (ServerNames.isEmpty()){
@@ -94,7 +90,6 @@ public class ECSConsistantHashRing {
         node.setNextNodeID(keyArray.get(nextIndex).toString());
         node.setNodeHashRange(hashRange);
         node.setPreNodeID(keyArray.get(preIndex).toString());
-
 
         HashRing.put(ECSNodeID.toString(),node);
         // update previous node of the newly added node in hashring
@@ -169,10 +164,11 @@ public class ECSConsistantHashRing {
             logger.error("List does not contain this element");
             throw (Throwable) RuntimeException;
         }
-        int nextIndex = (index+1)%hashRingSize;
-        int preIndex = (index==0) ?hashRingSize-1: index-1;
-        HashRing.get(keyArray.get(nextIndex).toString()).setPreNodeID(keyArray.get(preIndex).toString());
-        HashRing.get(keyArray.get(preIndex).toString()).setNextNodeID(keyArray.get(nextIndex).toString());
+
+        int nextIndex = (index + 1) % hashRingSize;
+        int preIndex = (index == 0) ? hashRingSize - 1 : index - 1;
+        HashRing.get(keyArray.get(nextIndex).toString()).updateNodeDataBefore(keyArray.get(preIndex).toString());;
+        HashRing.get(keyArray.get(preIndex).toString()).updateNodeDataBehind(keyArray.get(nextIndex).toString());
         keyArray.remove(index);
 
         hashRingSize -=1;
@@ -198,9 +194,10 @@ public class ECSConsistantHashRing {
         HashMap<String, Metadata> metadataMap = new HashMap<>();
         for (String server : HashRing.keySet()){
             IECSNode node = HashRing.get(server);
+            BigInteger prev = new BigInteger(node.getPreNodeID());
             BigInteger start = new BigInteger(node.getNodeHashRange()[0]);
             BigInteger stop = new BigInteger(node.getNodeHashRange()[1]);
-            Metadata metadata = new Metadata(node.getNodeHost(), node.getNodePort(), start, stop);
+            Metadata metadata = new Metadata(node.getNodeHost(), node.getNodePort(), prev, start, stop);
             metadataMap.put(server, metadata);
         }
         return metadataMap;

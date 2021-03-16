@@ -97,8 +97,6 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testdiskStorageGetRequestsStressTest() {
-		Exception ex1 = null;
-		Exception ex2 = null;
 		final int requestNum = 100;
 		Random random = ThreadLocalRandom.current();
 		byte[] r = new byte[20]; //Means 2048 bit
@@ -177,7 +175,10 @@ public class AdditionalTest extends TestCase {
 			ex = e;
 		}
 		// Exceeding maximum allowed length of 20 bytes / 20 characters
+		// an exception should be thrown and no KVMessage returned
 		assertTrue(ex != null);
+		assertTrue(putResponse == null);
+		assertTrue(getResponse == null);
 	}
 
 	@Test
@@ -274,7 +275,10 @@ public class AdditionalTest extends TestCase {
 			ex = e;
 		}
 		// Maximum allowed length is 120 * 1024 bytes / characters
+		// an exception should be thrown and no KVMessage returned
 		assertTrue(ex != null);
+		assertTrue(putResponse == null);
+		assertTrue(getResponse == null);
 	}
 
 	@Test

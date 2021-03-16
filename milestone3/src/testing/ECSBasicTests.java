@@ -4,7 +4,6 @@ import app_kvECS.*;
 import client.KVStore;
 import junit.framework.TestCase;
 import org.junit.Test;
-import java.util.*;
 
 public class ECSBasicTests extends TestCase {
     
