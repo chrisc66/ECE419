@@ -1,6 +1,7 @@
 package app_kvECS;
 
 import java.util.Map;
+import java.beans.beancontext.BeanContext;
 import java.util.Collection;
 
 import ecs.IECSNode;
@@ -58,9 +59,10 @@ public interface IECSClient {
     /**
      * Removes nodes with names matching the nodeNames array
      * @param nodeNames names of nodes to remove
+     * @param fromZk boolean variable indicates if zk node is already removed 
      * @return  true on success, false otherwise
      */
-    public boolean removeNodes(Collection<String> nodeNames);
+    public boolean removeNodes(Collection<String> nodeNames, boolean fromZk);
 
     /**
      * Get a map of all nodes

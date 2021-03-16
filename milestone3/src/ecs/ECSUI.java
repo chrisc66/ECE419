@@ -51,7 +51,7 @@ public class ECSUI{
             for (int i =1; i < tokens.length; i++) {
                 removeServerList.add(tokens[i]);
             }
-            ecsClient.removeNodes(removeServerList);
+            ecsClient.removeNodes(removeServerList, false);
         }
     }
 
