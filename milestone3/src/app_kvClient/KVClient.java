@@ -90,7 +90,6 @@ public class KVClient implements IKVClient {
                 printError("Invalid number of parameters!");
                 logger.error("Invalid number of parameters!");
             }
-
         } 
         else if (tokens[0].equals("put")) {
             if(tokens.length >= 2) {

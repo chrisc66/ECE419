@@ -31,7 +31,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     private static final int BUFFER_SIZE = 1024;
 
     private Socket clientSocket;
-    private static KVServer kvServer;
+    private KVServer kvServer;
     private boolean open;
 
     private InputStream input;
@@ -230,7 +230,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     catch (Exception e){
                         sendMsgType = StatusType.PUT_SUCCESS;
                     }
-                    // store / update key-value pair
+                    // perform store / update operation
                     try {
                         kvServer.putKV(message.getKey(), message.getValue());
                         sendMsgValue = message.getValue();
@@ -238,6 +238,8 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     catch (Exception e) {
                         sendMsgType = StatusType.PUT_ERROR;
                     }
+                    // update replicas
+                    kvServer.replicateOneKvPair(message.getKey(), message.getValue());
                     // set logger message
                     if (sendMsgType == StatusType.PUT_SUCCESS){
                         logger.info("PUT_SUCCESS: Value is stored on server, key: " + message.getKey() + ", value: " + message.getValue());
@@ -263,6 +265,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         sendMsgValue = getMetadata().toString();
                         return new KVMessageClass(sendMsgType, sendMsgKey, sendMsgValue);
                     }
+                    // perform delete operation 
                     try {
                         boolean ret = kvServer.deleteKV(message.getKey());
                         if (ret) {
@@ -278,6 +281,8 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         sendMsgType = StatusType.DELETE_ERROR;
                         logger.info("DELETE_ERROR: Value cannot be deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
                     }
+                    // update replicas
+                    kvServer.replicateOneKvPair(message.getKey(), message.getValue());
                 }
                 break;
             case DISCONNECT:

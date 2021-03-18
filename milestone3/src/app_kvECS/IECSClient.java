@@ -1,7 +1,6 @@
 package app_kvECS;
 
 import java.util.Map;
-import java.beans.beancontext.BeanContext;
 import java.util.Collection;
 
 import ecs.IECSNode;

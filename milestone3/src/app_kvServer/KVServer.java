@@ -481,6 +481,11 @@ public class KVServer implements IKVServer, Runnable {
 		return true;
 	}
 
+	/**
+	 * This function replicates all key-value pair that is within the hash range of KVServer.
+	 * All kv pairs within range are sent to two neighbouring KVServers. 
+	 * @return always return true. 
+	 */
 	public boolean replicateData(){
 		
 		// get out of range KV pairs and remove from disk storage
@@ -537,6 +542,65 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	/**
+	 * This function replicates one key-value pair upon KVServer receives PUT requests 
+	 * from KVClient. Only one key-value pair is transferred and sent to two neighbouring 
+	 * KVServers.
+	 * If value is non-empty string, perform insert / update operation
+	 * If value is empty string, perform delete operation 
+	 * @param key Key to replicate.
+	 * @param Value Value to replicate. 
+	 * @return always return true. 
+	 */
+	public boolean replicateOneKvPair(String key, String value){
+		
+		// get out of range KV pairs and remove from disk storage
+		Map<String, String> kvUpdate = new HashMap<>();
+		kvUpdate.put(key, value);
+
+		if (serverMetadatasMap.size() >= 2){
+			// Entering critical region and acquire write lock
+			lockWrite();
+			// send KVAdminMessage with KV pairs data
+			BigInteger prev = serverMetadata.prev;
+			Metadata targetMetadata = serverMetadatasMap.get(prev.toString());
+			// send to previous KVServer
+			String targetName = zkRootDataPathPrev + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
+			try {
+				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate);
+				logger.info("Replicate Data 1: Sending KVAdmin Message to " + targetName);
+				logger.info("Replicate Data 1: Message content: " + sendMsg.toString());
+				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate, targetName);
+			} catch (InterruptedException | KeeperException e){
+				logger.error(e);
+			}
+			// Leaving critical region and releasing write lock
+			unlockWrite();
+		}
+		
+		if (serverMetadatasMap.size() >= 3){
+			// Entering critical region and acquire write lock
+			lockWrite();
+			// send KVAdminMessage with KV pairs data
+			BigInteger stop = serverMetadata.stop;
+			Metadata targetMetadata = serverMetadatasMap.get(stop.toString());
+			// send to next KVServer
+			String targetName = zkRootDataPathNext + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
+			try {
+				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate);
+				logger.info("Replicate Data 2: Sending KVAdmin Message to " + targetName);
+				logger.info("Replicate Data 2: Message content: " + sendMsg.toString());
+				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate, targetName);
+			} catch (InterruptedException | KeeperException e){
+				logger.error(e);
+			}
+			// Leaving critical region and releasing write lock
+			unlockWrite();
+		} 
+
+		return true;
+	}
+
+	/**
 	 * Receive KV messages from KVAdminMessage data transfer and store in disk storage.
 	 * 
 	 * Note: this function assumes it holds write lock. 
@@ -559,7 +623,12 @@ public class KVServer implements IKVServer, Runnable {
 		Iterator<Map.Entry<String, String>> it = recvMsgKvData.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, String> kvPair = it.next();
-			this.diskStorage.put(kvPair.getKey().toString(), kvPair.getValue().toString());
+			if (kvPair.getValue().toString().equals("")){
+				diskStorage.delelteKV(kvPair.getKey());
+			}
+			else {
+				diskStorage.put(kvPair.getKey().toString(), kvPair.getValue().toString());
+			}
 		}
 		// Leaving critical region and releasing write lock
 		unlockWrite();
