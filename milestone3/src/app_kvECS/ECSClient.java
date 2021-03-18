@@ -13,10 +13,6 @@ import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.Watcher.Event.EventType;
-import org.apache.zookeeper.server.ServerConfig;
-import org.apache.zookeeper.server.ZooKeeperServerMain;
-import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
-import org.apache.zookeeper.server.admin.AdminServer.AdminServerException;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
@@ -63,31 +59,19 @@ public class ECSClient implements IECSClient{
     }
 
     private void initializeZooKeeper(){
-        // Create ZooKeeper server instance and run in a separate thread
-        Runnable zkServerRun = new Runnable(){
-            public void run(){
-                try{
-                    String zkServerConfPath = "zookeeper-3.4.11/conf/zoo.cfg";
-                    ServerConfig config = new ServerConfig();
-                    config.parse(zkServerConfPath);
-                    ZooKeeperServerMain zkServer = new ZooKeeperServerMain();
-                    zkServer.runFromConfig(config);
-                } catch (ConfigException | IOException | AdminServerException | NoClassDefFoundError e){}
-            }
-        };
-        Thread zkServer = new Thread(zkServerRun);
-        zkServer.start();
-
         // Create ZooKeeper client instance
         try {
             final CountDownLatch latch = new CountDownLatch(1);
             this.zk = new ZooKeeper(zkHost+":"+zkPort, zkTimeout, new Watcher(){
                 @Override
                 public void process(WatchedEvent event) {
-                    if (event.getState() == KeeperState.SyncConnected)
+                    if (event.getState() == KeeperState.SyncConnected){
+                        System.out.println("Connected to ZooKeeper Server.");
                         latch.countDown();
+                    }
                 }
             });
+            System.out.println("Connecting to ZooKeeper Server ...");
             latch.await();
         } catch (IOException | InterruptedException e){
             logger.error(e);
