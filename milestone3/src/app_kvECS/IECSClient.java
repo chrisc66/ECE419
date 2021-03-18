@@ -59,10 +59,10 @@ public interface IECSClient {
     /**
      * Removes nodes with names matching the nodeNames array
      * @param nodeNames names of nodes to remove
-     * @param fromZk boolean variable indicates if zk node is already removed 
+     * @param crashDetected boolean variable indicates if zk node is already removed 
      * @return  true on success, false otherwise
      */
-    public boolean removeNodes(Collection<String> nodeNames, boolean fromZk);
+    public boolean removeNodes(Collection<String> nodeNames, boolean crashDetected);
 
     /**
      * Get a map of all nodes

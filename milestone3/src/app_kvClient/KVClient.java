@@ -52,6 +52,7 @@ public class KVClient implements IKVClient {
                 stop = true;
                 printError("No response - Application terminated ");
             }
+            
         }
     }
 
@@ -123,7 +124,7 @@ public class KVClient implements IKVClient {
             }
         } 
         else if (tokens[0].equals("get")) {
-            if(tokens.length >= 1) {
+            if(tokens.length >= 2) {
                 if(kvStore != null && kvStore.isRunning()){
                     String key = tokens[1];
                     KVMessage msg = kvStore.get(key);

@@ -6,6 +6,7 @@ import shared.messages.KVMessage;
 import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -104,7 +105,8 @@ public class KVStore implements KVCommInterface, Runnable {
 	@Override
 	public KVMessage get(String key) throws Exception {
 		KVMessageClass kvmessage = new KVMessageClass(KVMessage.StatusType.GET, key, "");
-		return sendKVmessage (kvmessage, key);
+		KVMessage ret = sendKVmessage (kvmessage, key);
+		return ret;
 	}
 
 	public boolean isRunning() {
@@ -163,6 +165,9 @@ public class KVStore implements KVCommInterface, Runnable {
 
 	public void updateServer (KVMessage msg, String key) throws NoSuchAlgorithmException, Exception {
 		metadata = msg.getMetadata();
+		// for (Metadata m : metadata){
+		// 	logger.info("Printing updated metadata: " + m.serverAddress + " " + m.port + " " + m.start + " " + m.stop);
+		// }
 		BigInteger key_bi = mdKey(key);
 		for (int i = 0; i < metadata.size(); i++ ) {
 			Metadata obj = metadata.get(i);
@@ -203,8 +208,15 @@ public class KVStore implements KVCommInterface, Runnable {
 		// System.out.println("=========================================");
 		
 		kvCommunication.send(kvmessage);
-		KVMessage msg = kvCommunication.receive();
+		KVMessage msg = null;
 
+		try {
+			msg = kvCommunication.receive();
+		}
+		catch (IOException e){
+			msg = reconnectAndReceive(kvmessage, 0);
+		}
+		
 		// System.out.println("=========================================");
 		// System.out.println("KVClient receive KVMessage");
 		// System.out.println(msg.toString());
@@ -223,38 +235,41 @@ public class KVStore implements KVCommInterface, Runnable {
 			// System.out.println(msg.toString());
 			// System.out.println("=========================================");
 		}
+
 		return msg;
 	}
 
-	/**
-     * check if request key is in current server hashing range
-     */
-    // public boolean keyWithinRange(BigInteger key_hash){
 
-	// 	BigInteger max = new BigInteger(0xffffffffffffffffffffffffffffffff);
+	/**
+	 * In the case of broken server connection, this function uses a recursive structure to 
+	 * reconnect KVStore to another KVServer on its metadatas record. 
+	 * 
+	 * @param sendMsg KVMessage send to KVServer.
+	 * @param i Number of recursive call. 
+	 * @return KVMessage received from new KVServer.
+	 * @throws Exception Throws exception upon reconnection failure, exit the program.  
+	 */
+	public KVMessage reconnectAndReceive(KVMessage sendMsg, int i) throws Exception {
 		
-    //     List<BigInteger> hashRing = new ArrayList<>();
-    //     Iterator it = metadata.iterator();
-	// 	while (it.hasNext()) {
-	// 		Metadata entry = (Metadata)it.next();
-    //         hashRing.add(entry.start);
-	// 	}
-    //     Collections.sort(hashRing);
-    //     int i;
-    //     for (i = hashRing.size() - 1; i != 0; i --){
-    //         int compare = key_hash.compareTo(hashRing.get(i));
-	// 		if (compare >= 0){
-    //             break;   
-    //         }
-    //     }
-	// 	int my_idx;
-	// 	for (my_idx = 0; i < hashRing.size(); i ++){
-	// 		Stting servername = serverAddress+":"+serverPort;
-	// 		if (hashRing.get(i).compareTo(metadata.get(my_idx).start) == 0){
-	// 			break;
-	// 		}
-	// 	}
-    //     int compare = hashRing.get(i).compareTo(metadata.get(my_idx).start);
-    //     return (compare == 0);
-    // }
+		System.out.println("Cannot find server. Reconnecting ... ");
+		if (metadata == null || i >= metadata.size())
+			throw new Exception("Cannot find avaliable server to connect");
+
+		KVMessage recvMsg = null;
+		this.serverAddress = metadata.get(i).serverAddress;
+		this.serverPort = metadata.get(i).port;
+
+		try {
+			connect();
+			kvCommunication.send(sendMsg);
+			recvMsg = kvCommunication.receive();
+		}
+		catch (Exception e){
+			recvMsg = reconnectAndReceive(sendMsg, i + 1);
+		}
+		
+		return recvMsg;
+	}
+
 }
+

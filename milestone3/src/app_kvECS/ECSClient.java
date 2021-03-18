@@ -3,6 +3,7 @@ package app_kvECS;
 import ecs.ECSConsistantHashRing;
 import ecs.ECSNode;
 import ecs.IECSNode;
+import ecs.IECSNode.STATUS;
 import logger.LogSetup;
 import shared.messages.KVAdminMessage;
 import shared.messages.KVAdminMessage.KVAdminType;
@@ -16,8 +17,6 @@ import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.server.admin.AdminServer.AdminServerException;
-
-import static org.junit.Assert.assertTrue;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
@@ -38,7 +37,9 @@ public class ECSClient implements IECSClient{
     private boolean stop = false;
     private BufferedReader stdin;
     
-    private static final String zkRootNodePath = "/StorageServerRoot";
+    private static final String zkRootNodePath = "/StorageServerRoot";          // ZooKeeper path to root zNode
+	private static final String zkRootDataPathPrev = "/StorageServerDataPrev";	// ZooKeeper path to root zNode for data replication on previous node
+	private static final String zkRootDataPathNext = "/StorageServerDataNext";  // ZooKeeper path to root zNode for data replication on next node
     // private static final String serverDir = System.getProperty("user.dir");
     private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone3";
     private static final String serverJar = "m3-server.jar";
@@ -96,6 +97,12 @@ public class ECSClient implements IECSClient{
         try {
             if (zk.exists(zkRootNodePath, false) == null) {
                 zk.create(zkRootNodePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+            if (zk.exists(zkRootDataPathPrev, false) == null) {
+                zk.create(zkRootDataPathPrev, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+            if (zk.exists(zkRootDataPathNext, false) == null) {
+                zk.create(zkRootDataPathNext, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             }
         } catch (KeeperException | InterruptedException e) {
             logger.error(e);
@@ -292,7 +299,6 @@ public class ECSClient implements IECSClient{
             logger.error(e);
         }
 
-        assertTrue(newNode != null);
         return newNode;
     }
 
@@ -371,30 +377,40 @@ public class ECSClient implements IECSClient{
     }
 
     @Override
-    public boolean removeNodes(Collection<String> nodeNames, boolean fromZk) {
+    public boolean removeNodes(Collection<String> nodeNames, boolean crashDetected) {
+        for (String server : nodeNames){
+            removeNode(server, crashDetected);
+        }
+
+        return true;
+    }
+
+    public boolean removeNode(String nodeName, boolean crashDetected) {
         // Create KVAdminMessage with type UPDATE_REMOVE and metadata
         // Send message with zk.setData() to correct KVServer znode
-        for (String server : nodeNames){
-            try {
-                serverStatusMap.put(server, IECSNode.STATUS.OFFLINE);
-                hashRingDB.removeNodebyServerName(server);
-                curServers.remove(server);
-            } catch (Throwable e){
-                logger.error("Shutdown KVServer failed", e);
-                return false;
-            }
+        
+        try {
+            serverStatusMap.put(nodeName, IECSNode.STATUS.OFFLINE);
+            hashRingDB.removeNodebyServerName(nodeName);
+            curServers.remove(nodeName);
+        } catch (Throwable e){
+            logger.error("Shutdown KVServer failed", e);
+            return false;
         }
         
-        setupNodes(curServers.size(), "NONE", 0, null);
-        if (!fromZk){
-            setupNodes(nodeNames.size(), "NONE", 0, nodeNames);
+        if (!crashDetected){
+            ArrayList<String> nodeNames = new ArrayList<String>();
+            nodeNames.add(nodeName);
+            setupNodes(1, "NONE", 0, nodeNames); // to-remove
         }
         awaitNodes(1, 2000);
+        setupNodes(curServers.size(), "NONE", 0, null); // running
+        awaitNodes(1, 2000);
 
-        KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
-        for (String server : nodeNames){
+        if (!crashDetected){
+            KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
             try {
-                String zkDestServerNodePath = zkRootNodePath + "/" + server;
+                String zkDestServerNodePath = zkRootNodePath + "/" + nodeName;
                 if (zk.exists(zkDestServerNodePath, false) != null){
                     zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
                 }
@@ -423,10 +439,10 @@ public class ECSClient implements IECSClient{
             @Override
             public void process(WatchedEvent event) {
                 try {
-                    if (event.getType() == EventType.NodeDeleted){
-                        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                        System.out.println("Child removed !!!");
-                        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                    if (event.getType() == EventType.NodeDeleted && serverStatusMap.get(zkChildPath) != STATUS.OFFLINE){
+                        logger.info("KVServer disconnection detected");
+                        System.out.println("KVServer disconnection detected, creating a replacement node");
+                        System.out.print(PROMPT);
                         List<String> removeNode = new ArrayList<String>();
                         removeNode.add(zkChildPath);
                         removeNodes(removeNode, true);
@@ -492,7 +508,7 @@ public class ECSClient implements IECSClient{
             System.out.println("Shutting down down all storage servers");
             shutdown();
         } else if (tokens[0].equals("removenode")) {
-            System.out.println("Removing nodes");
+            System.out.println("Removing node");
             List<String> removeServerList = new ArrayList<>();
             for (int i = 1; i < tokens.length; i++) {
                 removeServerList.add(tokens[i]);
@@ -500,6 +516,23 @@ public class ECSClient implements IECSClient{
             removeNodes(removeServerList, false);
         } else if (tokens[0].equals("status")) {
             printServerStatus();
+        } else if(tokens[0].equals("loglevel")) {
+            if(tokens.length == 2) {
+                String level = setLevel(tokens[1]);
+                if (level.equals(LogSetup.UNKNOWN_LEVEL)) {
+                    printError(level + " is not a valid log level!");
+                    logger.error(level + " is not a valid log level!");
+                    printPossibleLogLevels();
+                } 
+                else {
+                    logger.info("Log level changed to level: " + level);
+                }
+            } 
+            else {
+                printError("Invalid number of parameters!");
+                printPossibleLogLevels();
+                logger.error("Invalid number of parameters!");
+            }
         } else if (tokens[0].equals("help")) {
             printHelp();
         } else if (tokens[0].equals("quit")) {
@@ -543,6 +576,11 @@ public class ECSClient implements IECSClient{
         }
     }
 
+    private void printPossibleLogLevels() {
+        System.out.println("Possible log levels are:");
+        System.out.println(LogSetup.getPossibleLogLevels());
+    }
+
     public void printHelp(){
         System.out.println("External Configuration Service (ECS) Client");
         System.out.println("Possible commands are:");
@@ -553,13 +591,49 @@ public class ECSClient implements IECSClient{
         System.out.println("    stop");
         System.out.println("    shutdown");
         System.out.println("    status");
+        System.out.println("    loglevel");
         System.out.println("    quit");
         System.out.println("    help");
     }
 
+    private String setLevel(String levelString) {
+
+        if(levelString.equals(Level.ALL.toString())) {
+            logger.setLevel(Level.ALL);
+            return Level.ALL.toString();
+        } 
+        else if(levelString.equals(Level.DEBUG.toString())) {
+            logger.setLevel(Level.DEBUG);
+            return Level.DEBUG.toString();
+        } 
+        else if(levelString.equals(Level.INFO.toString())) {
+            logger.setLevel(Level.INFO);
+            return Level.INFO.toString();
+        } 
+        else if(levelString.equals(Level.WARN.toString())) {
+            logger.setLevel(Level.WARN);
+            return Level.WARN.toString();
+        } 
+        else if(levelString.equals(Level.ERROR.toString())) {
+            logger.setLevel(Level.ERROR);
+            return Level.ERROR.toString();
+        } 
+        else if(levelString.equals(Level.FATAL.toString())) {
+            logger.setLevel(Level.FATAL);
+            return Level.FATAL.toString();
+        } 
+        else if(levelString.equals(Level.OFF.toString())) {
+            logger.setLevel(Level.OFF);
+            return Level.OFF.toString();
+        } 
+        else {
+            return LogSetup.UNKNOWN_LEVEL;
+        }
+    }
+
     public static void main(String[] args) {
         try {
-            new LogSetup("logs/ecs.log", Level.OFF);
+            new LogSetup("logs/ecs.log", Level.INFO);
             if (args.length == 0) {
                 args = new String[1];
                 args[0] = "ecs.config";
