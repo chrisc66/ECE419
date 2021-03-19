@@ -1,21 +1,42 @@
 package testing;
 
-import org.junit.Test;
 import DiskStorage.DiskStorage;
+import app_kvServer.KVServer;
 import client.KVStore;
 import shared.messages.KVMessage;
 import shared.messages.KVMessage.StatusType;
-
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import junit.framework.TestCase;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
-
 public class AdditionalTest extends TestCase {
 	
-	// TODO add your test cases, at least 3
+	// KVServer
+	KVServer kvServer;
+	// KVClient 
+	KVStore kvClient;
+		
+	@Before
+	public void setUp() {
+		kvServer = new KVServer(50000, 10, "NONE");
+		new Thread(kvServer).start();
+
+		kvClient = new KVStore("localhost", 50000);
+		try {
+			kvClient.connect();
+		} 
+		catch (Exception e) {}
+	}
+
+	@After
+	public void tearDown(){
+		kvClient.disconnect();
+		kvServer.close();
+	}
 	
 	@Test
 	public void testDiskStorageSequence() {
@@ -44,7 +65,6 @@ public class AdditionalTest extends TestCase {
 		assertEquals(null,DB.get(keyTest));
 		assertEquals(null,DB.get(keyTest_1));
 
-
 	}
 
 	@Test
@@ -55,8 +75,7 @@ public class AdditionalTest extends TestCase {
 		DiskStorage DB = new DiskStorage("ip:port");
 		try {
 			DB.put(keyTest, valTest);
-		}catch (Exception e){
-		}
+		} catch (Exception e){}
 		String Val = DB.get(keyTest);
 		assertTrue(valTest==Val);
 	}
@@ -108,22 +127,21 @@ public class AdditionalTest extends TestCase {
 		for (int i = 0; i < requestNum; i ++){
 			assertEquals(s, DB.get("k"));
 		}
-
 	}
 
 	@Test
 	public void testEmptyKey() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "";
 		String value = "testEmptyKey";
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;
@@ -136,17 +154,17 @@ public class AdditionalTest extends TestCase {
 	
 	@Test
 	public void testMaxLengthKey() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "I_AM_MAXIMUM_LENGTH_";	// Maximum length of 20 characters / 20 bytes
 		String value = "testMaxLengthKey";
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;
@@ -159,17 +177,17 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testKeyExceedingMaxLength() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "I_AM_LONGER_THAN_MAXIMUM_LENGTH_";	// Exceeding maximum length of 20 characters / 20 bytes
 		String value = "testKeyExceedingMaxLength";
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;
@@ -183,17 +201,17 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testEmptyValue() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testEmptyValue";
 		String value = "";
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;
@@ -236,17 +254,17 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testValueMaxLength() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testValueMaxLength";
 		String value = getRandomString(120*1024); // 120 * 1024 bytes / characters
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;
@@ -259,17 +277,17 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testValueExceedingMaxLength() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testValueExceeding";
 		String value = getRandomString(120*1024+1); // 120 * 1024 bytes / characters
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;
@@ -283,17 +301,17 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testSendRamdomByteArray() {
-		KVStore client = new KVStore("localhost", 50000, 1, 1);
+		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testRndByteArr";
 		String value = getRandomByteArray(10); // 10 bytes / characters
 		KVMessage putResponse = null;
 		KVMessage getResponse = null;
 		Exception ex = null;
 		try {
-			client.connect();
-			putResponse = client.put(key, value);
-			getResponse = client.get(key);
-			client.disconnect();
+			kvClient.connect();
+			putResponse = kvClient.put(key, value);
+			getResponse = kvClient.get(key);
+			kvClient.disconnect();
 		} 
 		catch (Exception e) {
 			ex = e;

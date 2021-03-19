@@ -389,6 +389,10 @@ public class ECSClient implements IECSClient{
         return true;
     }
 
+    public List<String> getCurrentServers(){
+        return curServers;
+    }
+
     @Override
     public Map<String, IECSNode> getNodes() {
         return hashRingDB.getHashRing();

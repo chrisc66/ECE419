@@ -3,45 +3,62 @@ package testing;
 import app_kvECS.*;
 import client.KVStore;
 import junit.framework.TestCase;
+import shared.messages.KVMessage;
+
+import java.util.List;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ECSBasicTests extends TestCase {
     
     // ECS Client
     private static final String configFilePath = "ecs.config";
+    private ECSClient ecsClient;
     // KVServer
     private static final int numKvServer = 8;
     private static final String cacheStrategy = "NONE";
     private static final int cacheSize = 0;
-
-    private ECSClient ecs;
+    // KVClient
     private KVStore kvClient;
 
+    @Before
     public void setUp() {
+        // Start ECS Client
         try {
-            ecs = new ECSClient(configFilePath);
-            ecs.ECSInitialization(0);
-        	ecs.addNodes(numKvServer, cacheStrategy, cacheSize);
+            ecsClient = new ECSClient(configFilePath);
+            ecsClient.ECSInitialization(0);
+        	ecsClient.addNodes(numKvServer, cacheStrategy, cacheSize);
         	try {
-            	ecs.awaitNodes(1, 10000);
+            	ecsClient.awaitNodes(1, 2000);
         	} catch (Exception e) {}
-            ecs.start();
+            ecsClient.start();
         } catch (Exception e) {
-            System.out.println("ECS Test error "+e);
+            System.out.println("ECS Test error " + e);
         }
+
+        // Start KVClient
+        List<String> curServers = ecsClient.getCurrentServers();
+        System.out.println(curServers);
+        String servername = curServers.get(0);
+        String[] tokens = servername.split(":");
+        String hostname = tokens[0];
+        int port = Integer.parseInt(tokens[1]);
+        System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
+        
+        kvClient = new KVStore(hostname, port);
     }
+
+    @After
+	public void tearDown() {
+		kvClient.disconnect();
+        ecsClient.shutdown();
+	}
 
     @Test
     public void testConnectionSuccess() {
 		Exception ex = null;
 
-        // List<String> avaliableServers = ecs.findAllAvaliableServer();
-        // String avaliableServer = avaliableServers.get(0);
-        // String[] tokens = avaliableServer.split(":");
-        // String hostname = tokens[0];
-        // int port = Integer.parseInt(tokens[1]);
-
-        KVStore kvClient = new KVStore("localhost", 50000);
 		try {
 			kvClient.connect();
 		} catch (Exception e) {
@@ -56,23 +73,34 @@ public class ECSBasicTests extends TestCase {
     public void testPut() {
 
         Exception ex = null;
-        
+
+        KVMessage response1 = null;
+        KVMessage response2 = null;
+        KVMessage response3 = null;
+        KVMessage response4 = null;
+        KVMessage response5 = null;
+
         try {
-            kvClient.put("a", "a");
-            kvClient.put("b", "b");
-            kvClient.put("c", "c");
-            kvClient.put("x", "x");
-            kvClient.put("y", "y");
-            kvClient.put("z", "z");
-            kvClient.put("1", "1");
-            kvClient.put("5", "5");
-            kvClient.put("9", "9");
+            response1 = kvClient.put("a", "a");
+            response2 = kvClient.put("b", "b");
+            response3 = kvClient.put("c", "c");
+            response4 = kvClient.put("d", "d");
+            response5 = kvClient.put("e", "e");
         } catch (Exception e) {
             ex = e;
         }
 
+        assertNotNull(response1);
+        assertNotNull(response2);
+        assertNotNull(response3);
+        assertNotNull(response4);
+        assertNotNull(response5);
+        assertEquals(response1.getStatus(), KVMessage.StatusType.PUT_SUCCESS);
+        assertEquals(response2.getStatus(), KVMessage.StatusType.PUT_SUCCESS);
+        assertEquals(response3.getStatus(), KVMessage.StatusType.PUT_SUCCESS);
+        assertEquals(response4.getStatus(), KVMessage.StatusType.PUT_SUCCESS);
+        assertEquals(response5.getStatus(), KVMessage.StatusType.PUT_SUCCESS);
         assertNull(ex);
-        return;
     }
 
     @Test
@@ -80,22 +108,33 @@ public class ECSBasicTests extends TestCase {
 
         Exception ex = null;
 
+        KVMessage response1 = null;
+        KVMessage response2 = null;
+        KVMessage response3 = null;
+        KVMessage response4 = null;
+        KVMessage response5 = null;
+
         try {
-            kvClient.get("a");
-            kvClient.get("b");
-            kvClient.get("c");
-            kvClient.get("x");
-            kvClient.get("y");
-            kvClient.get("z");
-            kvClient.get("1");
-            kvClient.get("5");
-            kvClient.get("9");
+            response1 = kvClient.get("a");
+            response2 = kvClient.get("b");
+            response3 = kvClient.get("c");
+            response4 = kvClient.get("d");
+            response5 = kvClient.get("e");
         } catch (Exception e) {
             ex = e;
         }
 
+        assertNotNull(response1);
+        assertNotNull(response2);
+        assertNotNull(response3);
+        assertNotNull(response4);
+        assertNotNull(response5);
+        assertEquals(response1.getStatus(), KVMessage.StatusType.GET_SUCCESS);
+        assertEquals(response2.getStatus(), KVMessage.StatusType.GET_SUCCESS);
+        assertEquals(response3.getStatus(), KVMessage.StatusType.GET_SUCCESS);
+        assertEquals(response4.getStatus(), KVMessage.StatusType.GET_SUCCESS);
+        assertEquals(response5.getStatus(), KVMessage.StatusType.GET_SUCCESS);
         assertNull(ex);
-        return;
     }
 
     @Test
@@ -103,38 +142,67 @@ public class ECSBasicTests extends TestCase {
 
         Exception ex = null;
 
+        KVMessage response1 = null;
+        KVMessage response2 = null;
+        KVMessage response3 = null;
+        KVMessage response4 = null;
+        KVMessage response5 = null;
+
         try {
-            kvClient.put("a", "");
-            kvClient.put("b", "");
-            kvClient.put("c", "");
-            kvClient.put("x", "");
-            kvClient.put("y", "");
-            kvClient.put("z", "");
-            kvClient.put("1", "");
-            kvClient.put("5", "");
-            kvClient.put("9", "");
+            response1 = kvClient.put("a", "");
+            response2 = kvClient.put("b", "");
+            response3 = kvClient.put("c", "");
+            response4 = kvClient.put("d", "");
+            response5 = kvClient.put("e", "");
         } catch (Exception e) {
             ex = e;
         }
 
+        assertNotNull(response1);
+        assertNotNull(response2);
+        assertNotNull(response3);
+        assertNotNull(response4);
+        assertNotNull(response5);
+        assertEquals(response1.getStatus(), KVMessage.StatusType.DELETE_SUCCESS);
+        assertEquals(response2.getStatus(), KVMessage.StatusType.DELETE_SUCCESS);
+        assertEquals(response3.getStatus(), KVMessage.StatusType.DELETE_SUCCESS);
+        assertEquals(response4.getStatus(), KVMessage.StatusType.DELETE_SUCCESS);
+        assertEquals(response5.getStatus(), KVMessage.StatusType.DELETE_SUCCESS);
         assertNull(ex);
-        return;
     }
 
     @Test
-    public void testShutdown() {
+    public void testGetAfterDelete() {
 
         Exception ex = null;
 
+        KVMessage response1 = null;
+        KVMessage response2 = null;
+        KVMessage response3 = null;
+        KVMessage response4 = null;
+        KVMessage response5 = null;
+
         try {
-            ecs.shutdown();
+            response1 = kvClient.get("a");
+            response2 = kvClient.get("b");
+            response3 = kvClient.get("c");
+            response4 = kvClient.get("d");
+            response5 = kvClient.get("e");
         } catch (Exception e) {
             ex = e;
         }
 
+        assertNotNull(response1);
+        assertNotNull(response2);
+        assertNotNull(response3);
+        assertNotNull(response4);
+        assertNotNull(response5);
+        assertEquals(response1.getStatus(), KVMessage.StatusType.GET_ERROR);
+        assertEquals(response2.getStatus(), KVMessage.StatusType.GET_ERROR);
+        assertEquals(response3.getStatus(), KVMessage.StatusType.GET_ERROR);
+        assertEquals(response4.getStatus(), KVMessage.StatusType.GET_ERROR);
+        assertEquals(response5.getStatus(), KVMessage.StatusType.GET_ERROR);
         assertNull(ex);
-        return;
-
     }
 
 }
