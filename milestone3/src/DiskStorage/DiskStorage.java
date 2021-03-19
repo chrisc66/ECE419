@@ -196,12 +196,10 @@ public class DiskStorage implements DiskStorageInterface{
         // START <= STOP && key > START && key < STOP
         // START >= STOP && key > START && key > STOP
         // START >= STOP && key < START && key < STOP
-        System.out.println("111");
         if ((start.compareTo(stop) !=  1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) == -1) || 
             (start.compareTo(stop) != -1) && (mdKey.compareTo(start) ==  1 && mdKey.compareTo(stop) ==  1) || 
             (start.compareTo(stop) != -1) && (mdKey.compareTo(start) == -1 && mdKey.compareTo(stop) == -1) )
             return true;
-        System.out.println("222");
         return false;
     }
 

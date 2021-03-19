@@ -66,30 +66,35 @@ public class ECSClient implements IECSClient{
                 @Override
                 public void process(WatchedEvent event) {
                     if (event.getState() == KeeperState.SyncConnected){
-                        System.out.println("Connected to ZooKeeper Server.");
+                        logger.info("Successfully connected to ZooKeeper Server.");
+                        System.out.println("Successfully connected to ZooKeeper Server.");
                         latch.countDown();
                     }
                 }
             });
+            logger.info("Connecting to ZooKeeper Server ...");
             System.out.println("Connecting to ZooKeeper Server ...");
             latch.await();
         } catch (IOException | InterruptedException e){
-            logger.error(e);
+            logger.error("Cannot to ZooKeeper Server", e);
         }
 
         // Create storage server root zNode in ZooKeeper
         try {
             if (zk.exists(zkRootNodePath, false) == null) {
                 zk.create(zkRootNodePath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                logger.info("Created ZooKeeper Root Node: " + zkRootNodePath);
             }
             if (zk.exists(zkRootDataPathPrev, false) == null) {
                 zk.create(zkRootDataPathPrev, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                logger.info("Created ZooKeeper Root Node: " + zkRootDataPathPrev);
             }
             if (zk.exists(zkRootDataPathNext, false) == null) {
                 zk.create(zkRootDataPathNext, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                logger.info("Created ZooKeeper Root Node: " + zkRootDataPathNext);
             }
         } catch (KeeperException | InterruptedException e) {
-            logger.error(e);
+            logger.error("Cannot create ZooKeeper root node", e);
         }
     }
 
@@ -147,23 +152,18 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean start() {
-        // KVServers responds to both ECS and KVClient
         // Create KVAdminMessage with type START
-        // Send message with zk.setData() to correct KVServer znode
         KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.START, null, null);
         for (String server : curServers){
             // change status to INUSE
             serverStatusMap.put(server, IECSNode.STATUS.INUSE);
             String zkDestServerNodePath = zkRootNodePath + "/" + server;
             try {
-                // System.out.println("#######################################");
-                // System.out.println("ECS Client send KVAdminMessage");
-                // System.out.println(sendMsg.toString());
-                // System.out.println("#######################################");
                 while (zk.exists(zkDestServerNodePath, false) == null){
                     awaitNodes(1, 2000);
                 }
                 zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
+                logger.info("Sending KVAdmin Message to " + zkDestServerNodePath + ", message content: " + sendMsg.toString());
             } catch (KeeperException | InterruptedException e){
                 logger.error("Start KVServer failed", e);
                 return false;
@@ -174,19 +174,14 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean stop() {
-        // KVServers still responds to ECS but not KVClient
-        // Create KVAdminMessage with type STOP
-        // Send message with zk.setData() to correct KVServer znode
+        // Send KVAdminMessage with type STOP
         KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.STOP, null, null);
         for (String server : curServers){
             try {
                 serverStatusMap.put(server, IECSNode.STATUS.IDLE);
                 String zkDestServerNodePath = zkRootNodePath + "/" + server;
-                // System.out.println("#######################################");
-                // System.out.println("ECS Client send KVAdminMessage");
-                // System.out.println(sendMsg.toString());
-                // System.out.println("#######################################");
                 zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
+                logger.info("Sending KVAdmin Message to " + zkDestServerNodePath + ", message content: " + sendMsg.toString());
             } catch (KeeperException | InterruptedException e){
                 logger.error("Stop KVServer failed", e);
                 return false;
@@ -197,20 +192,15 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean shutdown() {
-        // Stops all server instances and exits the remote processes
-        // Create KVAdminMessage with type SHUTDOWN
-        // Send message with zk.setData() to correct KVServer znode
+        // Send KVAdminMessage with type SHUTDOWN
         KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
         for (String server : curServers){
             try {
                 serverStatusMap.put(server, IECSNode.STATUS.OFFLINE);
                 hashRingDB.removeNodebyServerName(server);
                 String zkDestServerNodePath = zkRootNodePath + "/" + server;
-                // System.out.println("#######################################");
-                // System.out.println("ECS Client send KVAdminMessage");
-                // System.out.println(sendMsg.toString());
-                // System.out.println("#######################################");
                 zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
+                logger.info("Sending KVAdmin Message to " + zkDestServerNodePath + ", message content: " + sendMsg.toString());
             } catch (KeeperException | InterruptedException e){
                 logger.error("Shutdown KVServer failed", e);
                 return false;
@@ -272,15 +262,15 @@ public class ECSClient implements IECSClient{
             System.out.println("Error: cannot ssh start storage server node");
         }
 
-        awaitNodes(1, 4000);
+        awaitNodes(1, 2000);
         setupNodes(curServers.size(), cacheStrategy, cacheSize, null);
-        awaitNodes(1, 4000);
+        awaitNodes(1, 2000);
 
         try {
             detectZkNodeCrash(newServerName);
         }
         catch (KeeperException | InterruptedException | IllegalArgumentException e) {
-            logger.error(e);
+            logger.error("Error adding new node", e);
         }
 
         return newNode;
@@ -331,16 +321,11 @@ public class ECSClient implements IECSClient{
             String zkDestServerNodePath = zkRootNodePath + "/" + servername;
             KVAdminMessage sendMsg = new KVAdminMessage(admMsgType, hashRingDB.getMetadata(), null);
             try {
-                // System.out.println("#######################################");
-                // System.out.println("setupNodes: line 360");
-                // System.out.println("ECS Client sending KVAdminMessage");
-                // System.out.println(zkDestServerNodePath);
-                // System.out.println(sendMsg.toString());
-                // System.out.println("#######################################");
                 while (zk.exists(zkDestServerNodePath, false) == null){
-                    awaitNodes(count, 3000);
+                    awaitNodes(count, 1000);
                 }
                 zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
+                logger.info("Sending KVAdmin Message to " + zkDestServerNodePath + ", message content: " + sendMsg.toString());
             } catch (KeeperException | InterruptedException e){
                 logger.error(e);
             }
@@ -365,14 +350,11 @@ public class ECSClient implements IECSClient{
         for (String server : nodeNames){
             removeNode(server, crashDetected);
         }
-
         return true;
     }
 
     public boolean removeNode(String nodeName, boolean crashDetected) {
         // Create KVAdminMessage with type UPDATE_REMOVE and metadata
-        // Send message with zk.setData() to correct KVServer znode
-        
         try {
             serverStatusMap.put(nodeName, IECSNode.STATUS.OFFLINE);
             hashRingDB.removeNodebyServerName(nodeName);
@@ -397,13 +379,13 @@ public class ECSClient implements IECSClient{
                 String zkDestServerNodePath = zkRootNodePath + "/" + nodeName;
                 if (zk.exists(zkDestServerNodePath, false) != null){
                     zk.setData(zkDestServerNodePath, sendMsg.toBytes(), zk.exists(zkDestServerNodePath, false).getVersion());
+                    logger.info("Sending KVAdmin Message to " + zkDestServerNodePath + ", message content: " + sendMsg.toString());
                 }
             } catch (KeeperException | InterruptedException e){
                 logger.error("Shutdown KVServer failed", e);
                 return false;
             }
         }
-
         return true;
     }
 
@@ -491,16 +473,18 @@ public class ECSClient implements IECSClient{
         } else if (tokens[0].equals("shutdown")) {
             System.out.println("Shutting down down all storage servers");
             shutdown();
-        } else if (tokens[0].equals("removenode")) {
-            System.out.println("Removing node");
+        } else if (tokens[0].equals("removenode") || tokens[0].equals("removenodes")) {
+            System.out.println("Removing node(s)");
             List<String> removeServerList = new ArrayList<>();
             for (int i = 1; i < tokens.length; i++) {
                 removeServerList.add(tokens[i]);
             }
             removeNodes(removeServerList, false);
-        } else if (tokens[0].equals("status")) {
+        } else if (tokens[0].equals("status") || tokens[0].equals("serverstatus")) {
             printServerStatus();
-        } else if(tokens[0].equals("loglevel")) {
+        } else if (tokens[0].equals("hashringstatus") || tokens[0].equals("hashring")) {
+            printHashRingStatus();
+        }else if(tokens[0].equals("loglevel")) {
             if(tokens.length == 2) {
                 String level = setLevel(tokens[1]);
                 if (level.equals(LogSetup.UNKNOWN_LEVEL)) {
@@ -527,7 +511,6 @@ public class ECSClient implements IECSClient{
             String rmCmd = "rm -r " + serverDir + "/data/ " + serverDir + "/logs/";
             Runtime.getRuntime().exec(rmCmd);
             System.out.println("Application exit!");
-            // System.exit(0);
         } else {
             printError("Unknown command");
             printHelp();
@@ -535,7 +518,7 @@ public class ECSClient implements IECSClient{
         }
     }
 
-    public void printServerStatus (){
+    public void printServerStatus() {
         System.out.println("Status of all servers loaded from ecs.config");
         Iterator<Map.Entry<String,IECSNode.STATUS>> it = serverStatusMap.entrySet().iterator();
         while (it.hasNext()) {
@@ -560,6 +543,11 @@ public class ECSClient implements IECSClient{
         }
     }
 
+    private void printHashRingStatus() {
+        System.out.println("Status of current hash ring of active KVServer");
+        hashRingDB.printHashRing("Consistent Hash Ring");
+    }
+
     private void printPossibleLogLevels() {
         System.out.println("Possible log levels are:");
         System.out.println(LogSetup.getPossibleLogLevels());
@@ -570,11 +558,12 @@ public class ECSClient implements IECSClient{
         System.out.println("Possible commands are:");
         System.out.println("    addnode");
         System.out.println("    addnode <numer of nodes>");
-        System.out.println("    removenode <server names>");
+        System.out.println("    removenode <list of server names>");
         System.out.println("    start");
         System.out.println("    stop");
         System.out.println("    shutdown");
-        System.out.println("    status");
+        System.out.println("    status | serverstatus");
+        System.out.println("    hashring | hashringstatus");
         System.out.println("    loglevel");
         System.out.println("    quit");
         System.out.println("    help");
