@@ -472,8 +472,7 @@ public class KVServer implements IKVServer, Runnable {
 			logger.info("Move Data: Message content: " + sendMsg.toString());
 			sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutofRange, targetName);
 		} catch (InterruptedException | KeeperException e){
-			System.out.println(e);
-			logger.error(e);
+			logger.error("Error occured in moveData", e);
 		}
 
 		// Leaving critical region and releasing write lock
@@ -512,7 +511,7 @@ public class KVServer implements IKVServer, Runnable {
 				logger.info("Replicate Data 1: Message content: " + sendMsg.toString());
 				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvWithinRange, targetName);
 			} catch (InterruptedException | KeeperException e){
-				logger.error(e);
+				logger.error("Error occured in replicateData", e);
 			}
 			// Leaving critical region and releasing write lock
 			unlockWrite();
@@ -532,7 +531,7 @@ public class KVServer implements IKVServer, Runnable {
 				logger.info("Replicate Data 2: Message content: " + sendMsg.toString());
 				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvWithinRange, targetName);
 			} catch (InterruptedException | KeeperException e){
-				logger.error(e);
+				logger.error("Error occured in replicateData", e);
 			}
 			// Leaving critical region and releasing write lock
 			unlockWrite();
@@ -567,11 +566,11 @@ public class KVServer implements IKVServer, Runnable {
 			String targetName = zkRootDataPathPrev + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 			try {
 				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate);
-				logger.info("Replicate Data 1: Sending KVAdmin Message to " + targetName);
-				logger.info("Replicate Data 1: Message content: " + sendMsg.toString());
+				logger.info("Replicate One KV Pair 1: Sending KVAdmin Message to " + targetName);
+				logger.info("Replicate One KV Pair 1: Message content: " + sendMsg.toString());
 				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate, targetName);
 			} catch (InterruptedException | KeeperException e){
-				logger.error(e);
+				logger.error("Error occured in replicateData", e);
 			}
 			// Leaving critical region and releasing write lock
 			unlockWrite();
@@ -587,11 +586,11 @@ public class KVServer implements IKVServer, Runnable {
 			String targetName = zkRootDataPathNext + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 			try {
 				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate);
-				logger.info("Replicate Data 2: Sending KVAdmin Message to " + targetName);
-				logger.info("Replicate Data 2: Message content: " + sendMsg.toString());
+				logger.info("Replicate One KV Pair 2: Sending KVAdmin Message to " + targetName);
+				logger.info("Replicate One KV Pair 2: Message content: " + sendMsg.toString());
 				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate, targetName);
 			} catch (InterruptedException | KeeperException e){
-				logger.error(e);
+				logger.error("Error occured in replicateData", e);
 			}
 			// Leaving critical region and releasing write lock
 			unlockWrite();
@@ -691,8 +690,7 @@ public class KVServer implements IKVServer, Runnable {
 			return;
 		// create KVAdminMessage and perform actions according to message type
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
-		logger.info("Received KVAdmin Message");
-		logger.info("Message content: " + kvAdminMsgStr);
+		logger.info("Received KVAdmin Message, message content: " + kvAdminMsgStr);
 		switch(recvMsg.getMessageType()){
 			case START:			// START + null + null
 				start();
@@ -731,13 +729,6 @@ public class KVServer implements IKVServer, Runnable {
 
 	public void sendKVAdminMessage (KVAdminType type, Map<String, Metadata> ECSMetadata, Map<String, String> data, String msgDest) throws KeeperException ,InterruptedException{
 		KVAdminMessage sendMsg = new KVAdminMessage(type, ECSMetadata, data);
-		System.out.println("#######################################");
-		System.out.println("KVServer send KVAdminMessage to " + msgDest);
-		System.out.println(msgDest);
-		System.out.println(sendMsg.toString());
-		System.out.println("#######################################");
-		// logger.info("Sending KVAdmin Message to " + msgDest);
-		// logger.info("Message content: " + sendMsg.toString());
 		zk.setData(msgDest, sendMsg.toBytes(), zk.exists(msgDest, false).getVersion());
 	}
 

@@ -252,6 +252,7 @@ public class KVStore implements KVCommInterface, Runnable {
 	public KVMessage reconnectAndReceive(KVMessage sendMsg, int i) throws Exception {
 		
 		System.out.println("Cannot find server. Reconnecting ... ");
+		logger.info("Cannot find server. Reconnecting ... ");
 		if (metadata == null || i >= metadata.size())
 			throw new Exception("Cannot find avaliable server to connect");
 

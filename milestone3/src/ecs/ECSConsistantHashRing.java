@@ -55,17 +55,14 @@ public class ECSConsistantHashRing {
             HashRing.get(curServerKey.toString()).setPreNodeID(keyArray.get(preIndex).toString());
             HashRing.get(curServerKey.toString()).setNodeHashRange(hashRange);
         }
+
+        logger.info("ConsistantHashRing: Initialized hash ring with " + HashRing);
     }
 
     public void addNewNodeByNode(ECSNode node) throws Throwable {
         
         BigInteger ECSNodeID = mdKey(node.getNodeName());
         int newElementIndex = -1;
-
-        // printHashRing("addNewNodeByNode before");
-        // System.out.println("==================================");
-        // System.out.println("All nodes (before): " + keyArray);
-        // System.out.println("Adding ECSNodeID: " + ECSNodeID);
 
         for (int i = 0; i < this.hashRingSize; i++){
             int compare = ECSNodeID.compareTo(keyArray.get(i));
@@ -96,11 +93,6 @@ public class ECSConsistantHashRing {
             }
         }
 
-        // System.out.println("newElementIndex: " + newElementIndex);
-        // System.out.println("Adding ECSNodeID: " + ECSNodeID);
-        // System.out.println("All nodes (after): " + keyArray);
-        // System.out.println("==================================");
-
         this.hashRingSize += 1;
         int nextIndex = (newElementIndex+1)%hashRingSize;
         int preIndex = (newElementIndex==0) ?hashRingSize-1: newElementIndex-1;
@@ -116,7 +108,7 @@ public class ECSConsistantHashRing {
         //update the node after the newly added node in hashring
         HashRing.get(keyArray.get(nextIndex).toString()).updateNodeDataBefore(ECSNodeID.toString());
 
-        // printHashRing("addNewNodeByNode after");
+        logger.info("ConsistantHashRing: Added node " + ECSNodeID + " to hash ring. " + HashRing);
     }
 
     public boolean addNewNodeByNodes(Collection<ECSNode> nodes){
@@ -146,21 +138,11 @@ public class ECSConsistantHashRing {
             throw (Throwable) RuntimeException;
         }
 
-        // printHashRing("removeNodebyNodeID before");
-        // System.out.println("==================================");
-        // System.out.println("All nodes (before): " + keyArray);
-        // System.out.println("Removing ECSNodeID: " + nodeID);
-
         int nextIndex = (index + 1) % hashRingSize;
         int preIndex = (index == 0) ? hashRingSize - 1 : index - 1;
         HashRing.get(keyArray.get(nextIndex).toString()).updateNodeDataBefore(keyArray.get(preIndex).toString());;
         HashRing.get(keyArray.get(preIndex).toString()).updateNodeDataBehind(keyArray.get(nextIndex).toString());
         keyArray.remove(index);
-
-        // System.out.println("newElementIndex: " + index);
-        // System.out.println("Adding ECSNodeID: " + nodeID);
-        // System.out.println("All nodes (after): " + keyArray);
-        // System.out.println("==================================");
 
         hashRingSize -=1;
         IECSNode delNode = HashRing.remove(nodeID.toString());
@@ -169,8 +151,7 @@ public class ECSConsistantHashRing {
             logger.error("Something is very wrong");
         }
 
-        // printHashRing("removeNodebyNodeID after");
-
+        logger.info("ConsistantHashRing: Removed node " + nodeID + " from hash ring. " + HashRing);
     }
 
     public void removeNodebyServerName(String serverName) throws Throwable {
@@ -221,7 +202,6 @@ public class ECSConsistantHashRing {
      * @param message Message print associated with hash ring information
      */
     public void printHashRing(String message){
-        
         System.out.println("------------ " + message + " ----------------");
         Iterator<Map.Entry<String,IECSNode>> it = HashRing.entrySet().iterator();
         while (it.hasNext()) {
@@ -229,13 +209,13 @@ public class ECSConsistantHashRing {
             ECSNode node = (ECSNode) pair.getValue();
             System.out.println("Node Name: " + node.getNodeName());
             System.out.println("Node ID: " + node.getCurNodeIDStart());
+            System.out.println("Prev: " + node.getPreNodeID());
             System.out.println("Start: " + node.getCurNodeIDStart());
             System.out.println("Stop: " + node.getNextNodeID());
             System.out.println("------------------");
         }
-        System.out.println("Key Array: " + keyArray);
-        System.out.println("----------------------------------------------");
-        
+        System.out.println("Active KVServers: " + keyArray);
+        System.out.println("--------------------------------------------------");
     }
 
 }
