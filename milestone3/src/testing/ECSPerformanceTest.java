@@ -1,7 +1,7 @@
 package testing;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import client.KVStore;
 import app_kvECS.*;
@@ -29,7 +29,7 @@ public class ECSPerformanceTest extends TestCase {
     private String key = "foo";
     Random r = new Random(10);
 
-    @BeforeClass
+    @Before
     public void setUp() {
         
         try {
@@ -66,7 +66,7 @@ public class ECSPerformanceTest extends TestCase {
         }
     }
 
-    @AfterClass
+    @After
     public void tearDown() {
         kvClient.disconnect();
     }
@@ -217,28 +217,28 @@ public class ECSPerformanceTest extends TestCase {
 
 //------------------------------------compare between different payload (same iteration)----------------------------------------//
 
-@Test
-public void testPerf_put_16_() {
-    int iteration = 1000;
-    int numBytes = 16;
-    long startTime = System.currentTimeMillis();
-    for (int i = 0; i < iteration; i++) {
-        try {
-            kvClient.put(key, data_16_str);
-        } catch (Exception e) {
-            System.out.println("Performance test error!");
+    @Test
+    public void testPerf_put_16_() {
+        int iteration = 1000;
+        int numBytes = 16;
+        long startTime = System.currentTimeMillis();
+        for (int i = 0; i < iteration; i++) {
+            try {
+                kvClient.put(key, data_16_str);
+            } catch (Exception e) {
+                System.out.println("Performance test error!");
+            }
         }
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        double totalBytes = iteration * (numBytes);
+        double perf = 1000.0 * totalBytes / (1024 * duration);
+        double latency = 1000 * duration / (iteration * 1);
+
+        System.out.println("Perf (put payload 16)    = " + perf + " KB/s");
+        System.out.println("Latency (put payload 16) = " + latency + " ms");
     }
-
-    long duration = System.currentTimeMillis() - startTime;
-
-    double totalBytes = iteration * (numBytes);
-    double perf = 1000.0 * totalBytes / (1024 * duration);
-    double latency = 1000 * duration / (iteration * 1);
-
-    System.out.println("Perf (put payload 16)    = " + perf + " KB/s");
-    System.out.println("Latency (put payload 16) = " + latency + " ms");
-}
 
     @Test
     public void testPerf_get_16_() {

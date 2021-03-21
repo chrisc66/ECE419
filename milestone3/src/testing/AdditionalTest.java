@@ -25,6 +25,10 @@ public class AdditionalTest extends TestCase {
 		kvServer = new KVServer(50000, 10, "NONE");
 		new Thread(kvServer).start();
 
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e1) {}
+
 		kvClient = new KVStore("localhost", 50000);
 		try {
 			kvClient.connect();
@@ -34,8 +38,8 @@ public class AdditionalTest extends TestCase {
 
 	@After
 	public void tearDown(){
-		kvClient.disconnect();
-		kvServer.close();
+		// kvClient.disconnect();
+		// kvServer.close();
 	}
 	
 	@Test
@@ -64,7 +68,6 @@ public class AdditionalTest extends TestCase {
 		DB.clearDisk();
 		assertEquals(null,DB.get(keyTest));
 		assertEquals(null,DB.get(keyTest_1));
-
 	}
 
 	@Test

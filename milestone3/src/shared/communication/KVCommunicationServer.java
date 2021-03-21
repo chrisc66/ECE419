@@ -231,7 +231,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         sendMsgType = StatusType.PUT_ERROR;
                     }
                     // update replicas
-                    kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                    if (kvServer.distributed()){
+                        kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                    }
                     // set logger message
                     if (sendMsgType == StatusType.PUT_SUCCESS){
                         logger.info("PUT_SUCCESS: Value is stored on server, key: " + message.getKey() + ", value: " + message.getValue());
@@ -274,7 +276,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         logger.info("DELETE_ERROR: Value cannot be deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
                     }
                     // update replicas
-                    kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                    if (kvServer.distributed()){
+                        kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                    }
                 }
                 break;
             case DISCONNECT:

@@ -9,7 +9,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-
 public class InteractionTest extends TestCase {
 	
 	// KVServer
@@ -21,6 +20,10 @@ public class InteractionTest extends TestCase {
 	public void setUp() {
 		kvServer = new KVServer(50000, 10, "NONE");
 		new Thread(kvServer).start();
+		
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e1) {}
 
 		kvClient = new KVStore("localhost", 50000);
 		try {
@@ -31,22 +34,14 @@ public class InteractionTest extends TestCase {
 
 	@After
 	public void tearDown(){
-		kvClient.disconnect();
-		kvServer.close();
+		// kvClient.disconnect();
+		// kvServer.close();
 	}
 
 	@Test
 	public void testPut() {
 
 		Exception ex = null;
-
-		kvClient = new KVStore("localhost", 50000);
-		try {
-			kvClient.connect();
-		} 
-		catch (Exception e) {
-			ex = e;
-		}
 
 		String key = "foo2";
 		String value = "bar2";
@@ -59,7 +54,8 @@ public class InteractionTest extends TestCase {
 		}
 
 		assertTrue(ex == null);
-		assertTrue(response != null && response.getStatus() == StatusType.PUT_SUCCESS);
+		assertTrue(response != null);
+		assertTrue(response.getStatus() == StatusType.PUT_SUCCESS);
 	}
 	
 	@Test
@@ -79,11 +75,6 @@ public class InteractionTest extends TestCase {
 		}
 
 		assertNotNull(ex);
-
-		try {
-			kvClient.connect();
-		} 
-		catch (Exception e) {}
 	}
 
 	@Test
@@ -104,8 +95,9 @@ public class InteractionTest extends TestCase {
 			ex = e;
 		}
 
-		assertTrue(ex == null && response.getStatus() == StatusType.PUT_UPDATE
-				&& response.getValue().equals(updatedValue));
+		assertTrue(ex == null);
+		assertTrue(response.getStatus() == StatusType.PUT_UPDATE);
+		assertTrue(response.getValue().equals(updatedValue));
 	}
 	
 	@Test
@@ -125,7 +117,8 @@ public class InteractionTest extends TestCase {
 			ex = e;
 		}
 
-		assertTrue(ex == null && response.getStatus() == StatusType.DELETE_SUCCESS);
+		assertTrue(ex == null);
+		assertTrue(response.getStatus() == StatusType.DELETE_SUCCESS);
 	}
 	
 	@Test
@@ -144,7 +137,9 @@ public class InteractionTest extends TestCase {
 			ex = e;
 		}
 		
-		assertTrue(ex == null && response.getValue().equals("bar"));
+		assertTrue(ex == null);
+		assertTrue(response.getStatus() == StatusType.GET_SUCCESS);
+		assertTrue(response.getValue().equals("bar"));
 	}
 
 	@Test
@@ -161,7 +156,8 @@ public class InteractionTest extends TestCase {
 			ex = e;
 		}
 		
-		assertTrue(ex == null && response.getStatus() == StatusType.GET_ERROR);
+		assertTrue(ex == null);
+		assertTrue(response.getStatus() == StatusType.GET_ERROR);
 	}
 
 }

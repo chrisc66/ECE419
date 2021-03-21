@@ -278,8 +278,16 @@ public class ECSClient implements IECSClient{
 
     @Override
     public Collection<IECSNode> addNodes(int count, String cacheStrategy, int cacheSize) {
+        
         if (curServers.size() == serverStatusMap.size()){
-            logger.error("All servers in the configurations are deployed");
+            logger.error("All servers in the configurations are deployed.");
+            System.out.println("All servers in the configurations are deployed.");
+            return null;
+        }
+
+        if (count > findAllAvaliableServer().size()){
+            logger.error("Too many node(s) to be added.");
+            System.out.println("Too many node(s) to be added.");
             return null;
         }
 

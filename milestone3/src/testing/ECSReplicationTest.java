@@ -10,7 +10,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ECSBasicTests extends TestCase {
+public class ECSReplicationTest extends TestCase {
     
     // ECS Client
     private static final String configFilePath = "ecs.config";
