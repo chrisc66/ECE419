@@ -140,7 +140,7 @@
   <target name="build-jar" depends="build-client-jar, build-server-jar, build-ecs-jar" />
 
   <!-- run test cases -->
-  <target name="test" depends="build">
+  <target name="test" depends="build, build-jar">
     <junit>
       <classpath refid="project.classpath" />
       <formatter type="brief" usefile="false" />

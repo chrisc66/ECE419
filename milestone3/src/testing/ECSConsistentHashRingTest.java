@@ -7,7 +7,8 @@ import ecs.IECSNode;
 import java.util.Collection;
 import java.util.List;
 import junit.framework.TestCase;
-import org.junit.AfterClass;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,7 +32,7 @@ public class ECSConsistentHashRingTest extends TestCase {
             ecsClient.ECSInitialization(0);
         	ecsClient.addNodes(numKvServer, cacheStrategy, cacheSize);
         	try {
-            	ecsClient.awaitNodes(1, 2000);
+            	ecsClient.awaitNodes(1, 10000);
         	} catch (Exception e) {}
             ecsClient.start();
         } catch (Exception e) {
@@ -48,9 +49,12 @@ public class ECSConsistentHashRingTest extends TestCase {
         System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
         
         kvClient = new KVStore(hostname, port);
+        try {
+			kvClient.connect();
+		} catch (Exception e) {}
     }
 
-    @AfterClass
+    @After
 	public void tearDown() {
 		kvClient.disconnect();
         ecsClient.shutdown();
@@ -66,6 +70,8 @@ public class ECSConsistentHashRingTest extends TestCase {
         int numCurServers = ecsClient.getCurrentServers().size();
         int numNodes = ecsClient.getNodes().size();
 
+        ecsClient.shutdown();
+
         assertEquals(numCurServers, numNodes);
         assertNull(ex);
     }
@@ -78,6 +84,8 @@ public class ECSConsistentHashRingTest extends TestCase {
         int numCurServers = ecsClient.getCurrentServers().size();
         int numNodes = ecsClient.getNodes().size();
 
+        ecsClient.shutdown();
+
         assertEquals(numCurServers, numNodes);
     }
 
@@ -86,12 +94,17 @@ public class ECSConsistentHashRingTest extends TestCase {
 
         Collection<IECSNode> ret = ecsClient.addNodes(1000, cacheStrategy, cacheSize);
 
+        ecsClient.shutdown();
+
         assertEquals(ret, null);
     }
 
+    // TODO
     @Test
     public void testRemoveNodes() {
-
+        
+        ecsClient.addNodes(4, cacheStrategy, cacheSize);
+        
         List<String> curServers = ecsClient.getCurrentServers();
         String servername = curServers.get(0);
         ecsClient.removeNode(servername, false);
@@ -99,17 +112,24 @@ public class ECSConsistentHashRingTest extends TestCase {
         int numCurServers = ecsClient.getCurrentServers().size();
         int numNodes = ecsClient.getNodes().size();
 
+        ecsClient.shutdown();
+
         assertEquals(numCurServers, numNodes);
     }
 
+    // TODO
     @Test
     public void testRemoveAllNodes() {
+
+        ecsClient.addNodes(4, cacheStrategy, cacheSize);
 
         List<String> curServers = ecsClient.getCurrentServers();
         ecsClient.removeNodes(curServers, false);
         
         int numCurServers = ecsClient.getCurrentServers().size();
         int numNodes = ecsClient.getNodes().size();
+
+        ecsClient.shutdown();
 
         assertEquals(numCurServers, numNodes);
     }

@@ -10,7 +10,7 @@ public class AllTests {
 
 	static {
 		try {
-			new LogSetup("logs/testing/test.log", Level.ERROR);
+			new LogSetup("logs/testing/test.log", Level.OFF);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -21,18 +21,20 @@ public class AllTests {
 		TestSuite clientSuite = new TestSuite("Basic Storage ServerTest-Suite");
 		
 		// Non-distributed Storage Server Tests
-		clientSuite.addTestSuite(ConnectionTest.class);
-		clientSuite.addTestSuite(InteractionTest.class);
-		clientSuite.addTestSuite(AdditionalTest.class);
+		clientSuite.addTestSuite(ConnectionTest.class);				// Non-distributed
+		clientSuite.addTestSuite(InteractionTest.class);			// Non-distributed
+		clientSuite.addTestSuite(AdditionalTest.class);				// Non-distributed
 		
 		// Distributed Storage Server Tests
-		clientSuite.addTestSuite(ECSBasicTests.class);
-		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);
-		clientSuite.addTestSuite(ECSCornerCasesTest.class);
+		clientSuite.addTestSuite(ECSBasicTests.class);				// Distributed.
+		clientSuite.addTestSuite(ECSReplicationTest.class);			// Distributed.
+		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);	// Distributed..
+		clientSuite.addTestSuite(ECSCornerCasesTest.class);			// Distributed
+		
 
 		// Commenting out performance test to save some time when running tests 
-		// clientSuite.addTestSuite(PerformanceTest.class);
-		// clientSuite.addTestSuite(ECSPerformanceTest.class);
+		// clientSuite.addTestSuite(PerformanceTest.class);			// Performance
+		// clientSuite.addTestSuite(ECSPerformanceTest.class);		// Performance
 
 		return clientSuite;
 	}

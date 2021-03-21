@@ -29,7 +29,7 @@ public class ECSCornerCasesTest extends TestCase {
             ecsClient = new ECSClient(configFilePath);
             ecsClient.ECSInitialization(0);
         	ecsClient.addNodes(1, cacheStrategy, cacheSize);
-            ecsClient.awaitNodes(1, 2000);
+            ecsClient.awaitNodes(1, 5000);
         } catch (Exception e) {
             ex = e;
         }
@@ -49,6 +49,8 @@ public class ECSCornerCasesTest extends TestCase {
         } catch (Exception e) {
             ex = e;
         }
+
+        ecsClient.shutdown();
 
         assertNull(ex);
     }
@@ -65,7 +67,7 @@ public class ECSCornerCasesTest extends TestCase {
             ecsClient = new ECSClient(configFilePath);
             ecsClient.ECSInitialization(0);
         	ecsClient.addNodes(2, cacheStrategy, cacheSize);
-            ecsClient.awaitNodes(1, 2000);
+            ecsClient.awaitNodes(1, 5000);
         } catch (Exception e) {
             ex = e;
         }
@@ -85,6 +87,8 @@ public class ECSCornerCasesTest extends TestCase {
         } catch (Exception e) {
             ex = e;
         }
+
+        ecsClient.shutdown();
 
         assertNull(ex);
     }
@@ -101,8 +105,7 @@ public class ECSCornerCasesTest extends TestCase {
             ecsClient = new ECSClient(configFilePath);
             ecsClient.ECSInitialization(0);
         	ecsClient.addNodes(3, cacheStrategy, cacheSize);
-            ecsClient.awaitNodes(1, 2000);
-            ecsClient.start();
+            ecsClient.awaitNodes(1, 5000);
         } catch (Exception e) {
             ex = e;
         }
@@ -122,6 +125,8 @@ public class ECSCornerCasesTest extends TestCase {
         } catch (Exception e) {
             ex = e;
         }
+
+        ecsClient.shutdown();
 
         assertNull(ex);
     }
@@ -139,29 +144,12 @@ public class ECSCornerCasesTest extends TestCase {
             ecsClient = new ECSClient(configFilePath);
             ecsClient.ECSInitialization(0);
         	res = ecsClient.addNodes(1000, cacheStrategy, cacheSize);
-            ecsClient.awaitNodes(1, 2000);
-            ecsClient.start();
+            ecsClient.awaitNodes(1, 5000);
         } catch (Exception e) {
             ex = e;
         }
 
-        // Start KVClient
-        List<String> curServers = ecsClient.getCurrentServers();
-        System.out.println(curServers);
-        String servername = curServers.get(0);
-        String[] tokens = servername.split(":");
-        String hostname = tokens[0];
-        int port = Integer.parseInt(tokens[1]);
-        System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
-        
-        KVStore kvClient = new KVStore(hostname, port);
-        try {
-            kvClient.connect();
-        } catch (Exception e) {
-            ex = e;
-        }
-
-        assertNotNull(res);
+        assertNull(res);
         assertNull(ex);
     }
 

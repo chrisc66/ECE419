@@ -22,7 +22,7 @@ public class ConnectionTest extends TestCase {
 
 	@After
 	public void tearDown(){
-		kvServer.close();
+		// kvServer.close();
 	}
 
 	@Test
@@ -38,6 +38,7 @@ public class ConnectionTest extends TestCase {
 		}	
 		
 		kvClient.disconnect();
+
 		assertNull(ex);
 	}
 	
@@ -54,6 +55,7 @@ public class ConnectionTest extends TestCase {
 		}
 		
 		kvClient.disconnect();
+
 		assertTrue(ex instanceof UnknownHostException);
 	}
 	
@@ -70,6 +72,7 @@ public class ConnectionTest extends TestCase {
 		}
 		
 		kvClient.disconnect();
+		
 		assertTrue(ex instanceof IllegalArgumentException);
 	}
 	
