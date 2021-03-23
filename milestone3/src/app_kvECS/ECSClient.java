@@ -569,14 +569,14 @@ public class ECSClient implements IECSClient{
         System.out.println("External Configuration Service (ECS) Client");
         System.out.println("Possible commands are:");
         System.out.println("    addnode");
-        System.out.println("    addnode <numer of nodes>");
+        System.out.println("    addnodes <number of nodes>");
         System.out.println("    removenode <list of server names>");
         System.out.println("    start");
         System.out.println("    stop");
         System.out.println("    shutdown");
         System.out.println("    status | serverstatus");
         System.out.println("    hashring | hashringstatus");
-        System.out.println("    loglevel");
+        System.out.println("    loglevel <level>");
         System.out.println("    quit");
         System.out.println("    help");
     }
