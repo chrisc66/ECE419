@@ -26,11 +26,10 @@ public class AllTests {
 		clientSuite.addTestSuite(AdditionalTest.class);				// Non-distributed
 		
 		// Distributed Storage Server Tests
-		clientSuite.addTestSuite(ECSBasicTests.class);				// Distributed.
-		clientSuite.addTestSuite(ECSReplicationTest.class);			// Distributed.
-		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);	// Distributed..
+		clientSuite.addTestSuite(ECSBasicTests.class);				// Distributed
+		clientSuite.addTestSuite(ECSReplicationTest.class);			// Distributed
+		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);	// Distributed
 		clientSuite.addTestSuite(ECSCornerCasesTest.class);			// Distributed
-		
 
 		// Commenting out performance test to save some time when running tests 
 		// clientSuite.addTestSuite(PerformanceTest.class);			// Performance
