@@ -151,7 +151,7 @@ public class KVClient implements IKVClient {
             }
             logger.info("Disconnect from server.");
         } 
-        else if(tokens[0].equals("logLevel")) {
+        else if(tokens[0].equals("loglevel")) {
             if(tokens.length == 2) {
                 String level = setLevel(tokens[1]);
                 if(level.equals(LogSetup.UNKNOWN_LEVEL)) {
@@ -229,11 +229,11 @@ public class KVClient implements IKVClient {
 
     private void printHelp(){
         System.out.println("Possible commands are:");
-        System.out.println("    connect <ip> <port>");
+        System.out.println("    connect <ip_address> <port>");
         System.out.println("    disconnect");
         System.out.println("    quit");
         System.out.println("    help");
-        System.out.println("    logLevel <level>");
+        System.out.println("    loglevel <level>");
         System.out.println("    put <key> <value>");
         System.out.println("    get <key>");
     }
