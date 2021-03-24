@@ -15,7 +15,8 @@ import org.junit.Test;
 public class ECSConsistentHashRingTest extends TestCase {
     
     // ECS Client
-    private static final String configFilePath = "ecs.config";
+    // private static final String configFilePath = System.getProperty("user.dir") + "/ecs.config";
+    private static final String configFilePath = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone3/ecs.config";
     private ECSClient ecsClient;
     // KVServer
     private static final int numKvServer = 1;
@@ -41,12 +42,11 @@ public class ECSConsistentHashRingTest extends TestCase {
 
         // Start KVClient
         List<String> curServers = ecsClient.getCurrentServers();
-        System.out.println(curServers);
         String servername = curServers.get(0);
         String[] tokens = servername.split(":");
         String hostname = tokens[0];
         int port = Integer.parseInt(tokens[1]);
-        System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
+        System.out.println("ECSConsistentHashRingTest setUp: connecting to " + hostname + ":" + port);
         
         kvClient = new KVStore(hostname, port);
         try {
@@ -99,7 +99,6 @@ public class ECSConsistentHashRingTest extends TestCase {
         assertEquals(ret, null);
     }
 
-    // TODO
     @Test
     public void testRemoveNodes() {
         
@@ -117,7 +116,6 @@ public class ECSConsistentHashRingTest extends TestCase {
         assertEquals(numCurServers, numNodes);
     }
 
-    // TODO
     @Test
     public void testRemoveAllNodes() {
 

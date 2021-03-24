@@ -12,7 +12,8 @@ import org.junit.Test;
 public class ECSCornerCasesTest extends TestCase {
     
     // ECS Client
-    private static final String configFilePath = "ecs.config";
+    // private static final String configFilePath = System.getProperty("user.dir") + "/ecs.config";
+    private static final String configFilePath = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone3/ecs.config";
     // KVServer
     private static final String cacheStrategy = "NONE";
     private static final int cacheSize = 0;
@@ -36,12 +37,11 @@ public class ECSCornerCasesTest extends TestCase {
 
         // Start KVClient
         List<String> curServers = ecsClient.getCurrentServers();
-        System.out.println(curServers);
         String servername = curServers.get(0);
         String[] tokens = servername.split(":");
         String hostname = tokens[0];
         int port = Integer.parseInt(tokens[1]);
-        System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
+        System.out.println("ECSCornerCasesTest testOneNode: connecting to " + hostname + ":" + port);
         
         KVStore kvClient = new KVStore(hostname, port);
         try {
@@ -74,12 +74,11 @@ public class ECSCornerCasesTest extends TestCase {
 
         // Start KVClient
         List<String> curServers = ecsClient.getCurrentServers();
-        System.out.println(curServers);
         String servername = curServers.get(0);
         String[] tokens = servername.split(":");
         String hostname = tokens[0];
         int port = Integer.parseInt(tokens[1]);
-        System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
+        System.out.println("ECSCornerCasesTest testTwoNodes: connecting to " + hostname + ":" + port);
         
         KVStore kvClient = new KVStore(hostname, port);
         try {
@@ -112,12 +111,11 @@ public class ECSCornerCasesTest extends TestCase {
 
         // Start KVClient
         List<String> curServers = ecsClient.getCurrentServers();
-        System.out.println(curServers);
         String servername = curServers.get(0);
         String[] tokens = servername.split(":");
         String hostname = tokens[0];
         int port = Integer.parseInt(tokens[1]);
-        System.out.println("ECSBasicTests testPut: connecting to " + hostname + ":" + port);
+        System.out.println("ECSCornerCasesTest testThreeNodes: connecting to " + hostname + ":" + port);
         
         KVStore kvClient = new KVStore(hostname, port);
         try {
@@ -149,6 +147,8 @@ public class ECSCornerCasesTest extends TestCase {
             ex = e;
         }
 
+        ecsClient.shutdown();
+        
         assertNull(res);
         assertNull(ex);
     }

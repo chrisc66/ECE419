@@ -251,9 +251,10 @@ public class ECSClient implements IECSClient{
 
         // ssh start KVServer instance remotely
         String cdCmd = " cd " + serverDir + "; ";
+        String mkdirCmd = " mkdir -p " + serverDir + "/logs; ";
         String startServerCmd = " java -jar " + serverDir + "/" + serverJar + " " + newServerName + " " + zkPort + " "  + zkHost;
         String nohupCmd = " nohup " + startServerCmd + " &> logs/nohup." + newServerName + ".out &";
-        String sshStartCmd = "ssh -o StrictHostKeyChecking=no -n " + zkHost + cdCmd + nohupCmd;
+        String sshStartCmd = "ssh -o StrictHostKeyChecking=no -n " + zkHost + cdCmd + mkdirCmd + nohupCmd;
         try {
             Runtime.getRuntime().exec(sshStartCmd);
             logger.info("Creating KVServer with command: " + sshStartCmd);
@@ -355,7 +356,8 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean removeNodes(Collection<String> nodeNames, boolean crashDetected) {
-        for (String server : nodeNames){
+        Collection<String> toRemove = new ArrayList<String>(nodeNames);
+        for (String server : toRemove){
             removeNode(server, crashDetected);
         }
         return true;
