@@ -37,8 +37,8 @@ public class ECSClient implements IECSClient{
 	private static final String zkRootDataPathPrev = "/StorageServerDataPrev";	// ZooKeeper path to root zNode for data replication on previous node
 	private static final String zkRootDataPathNext = "/StorageServerDataNext";  // ZooKeeper path to root zNode for data replication on next node
     // private static final String serverDir = System.getProperty("user.dir");
-    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone3";
-    private static final String serverJar = "m3-server.jar";
+    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone4";
+    private static final String serverJar = "m4-server.jar";
     private static final int zkPort = 2181;
     private static final String zkHost = "localhost";
     private static final int zkTimeout = 20000;
@@ -153,7 +153,7 @@ public class ECSClient implements IECSClient{
     @Override
     public boolean start() {
         // Create KVAdminMessage with type START
-        KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.START, null, null);
+        KVAdminMessage sendMsg = new KVAdminMessage("ECS", KVAdminType.START, null, null);
         for (String server : curServers){
             // change status to INUSE
             serverStatusMap.put(server, IECSNode.STATUS.INUSE);
@@ -175,7 +175,7 @@ public class ECSClient implements IECSClient{
     @Override
     public boolean stop() {
         // Send KVAdminMessage with type STOP
-        KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.STOP, null, null);
+        KVAdminMessage sendMsg = new KVAdminMessage("ECSClient", KVAdminType.STOP, null, null);
         for (String server : curServers){
             try {
                 serverStatusMap.put(server, IECSNode.STATUS.IDLE);
@@ -193,7 +193,7 @@ public class ECSClient implements IECSClient{
     @Override
     public boolean shutdown() {
         // Send KVAdminMessage with type SHUTDOWN
-        KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
+        KVAdminMessage sendMsg = new KVAdminMessage("ECS", KVAdminType.SHUTDOWN, null, null);
         for (String server : curServers){
             try {
                 serverStatusMap.put(server, IECSNode.STATUS.OFFLINE);
@@ -328,7 +328,7 @@ public class ECSClient implements IECSClient{
             }
 
             String zkDestServerNodePath = zkRootNodePath + "/" + servername;
-            KVAdminMessage sendMsg = new KVAdminMessage(admMsgType, hashRingDB.getMetadata(), null);
+            KVAdminMessage sendMsg = new KVAdminMessage("ECS", admMsgType, hashRingDB.getMetadata(), null);
             try {
                 while (zk.exists(zkDestServerNodePath, false) == null){
                     awaitNodes(count, 1000);
@@ -384,7 +384,7 @@ public class ECSClient implements IECSClient{
         awaitNodes(1, 2000);
 
         if (!crashDetected){
-            KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.SHUTDOWN, null, null);
+            KVAdminMessage sendMsg = new KVAdminMessage("ECS", KVAdminType.SHUTDOWN, null, null);
             try {
                 String zkDestServerNodePath = zkRootNodePath + "/" + nodeName;
                 if (zk.exists(zkDestServerNodePath, false) != null){
