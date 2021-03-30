@@ -20,20 +20,23 @@ public class AllTests {
 		
 		TestSuite clientSuite = new TestSuite("Basic Storage ServerTest-Suite");
 		
-		// Non-distributed Storage Server Tests
-		clientSuite.addTestSuite(ConnectionTest.class);				// Non-distributed
-		clientSuite.addTestSuite(InteractionTest.class);			// Non-distributed
-		clientSuite.addTestSuite(AdditionalTest.class);				// Non-distributed
-		
-		// Distributed Storage Server Tests
-		clientSuite.addTestSuite(ECSBasicTests.class);				// Distributed
-		clientSuite.addTestSuite(ECSReplicationTest.class);			// Distributed
-		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);	// Distributed
-		clientSuite.addTestSuite(ECSCornerCasesTest.class);			// Distributed
+		// M1: Non-distributed Storage Server Tests
+		clientSuite.addTestSuite(ConnectionTest.class);				// server-client connection
+		clientSuite.addTestSuite(InteractionTest.class);			// server-client interaction
+		clientSuite.addTestSuite(AdditionalTest.class);				// server-client disk storage and communication module
 
-		// Commenting out performance test to save some time when running tests 
-		// clientSuite.addTestSuite(PerformanceTest.class);			// Performance
-		// clientSuite.addTestSuite(ECSPerformanceTest.class);		// Performance
+		// M2 & M3: Distributed Storage Server Tests (Eventual Consistency Model)
+		clientSuite.addTestSuite(ECSBasicTests.class);				// ecs nodes management and server-client interaction
+		clientSuite.addTestSuite(ECSReplicationTest.class);			// multi-server data replication
+		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);	// ecs consistent hash ring functionality
+		clientSuite.addTestSuite(ECSCornerCasesTest.class);			// ecs consistent hash ring corner cases
+
+		// M4: Distributed Storage Server Tests (Strict Consistency Model)
+		clientSuite.addTestSuite(StrictConsistencyTest.class);			// distributed system strict consistency rules
+
+		// Perf: Commenting out performance test to save some time when running tests 
+		// clientSuite.addTestSuite(PerformanceTest.class);			// performance tests for non-distributed service
+		// clientSuite.addTestSuite(ECSPerformanceTest.class);		// performance tests for distributed service
 
 		return clientSuite;
 	}
