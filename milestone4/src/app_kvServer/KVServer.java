@@ -67,6 +67,9 @@ public class KVServer implements IKVServer, Runnable {
 	private static final String zkRootDataPathNext = "/StorageServerDataNext";	// ZooKeeper path to root zNode for data replication
 	private String zkServerDataPathNext;										// ZooKeeper path to child (KVServer) zNode
 
+	// M4: Strict Consistency
+	private boolean waitingForAck; 												// waiting for acknowledgement for KV_TRANSFER between servers
+
 	/**
 	 * Start KV Server at given port. 
 	 * Note: this constructor creates a non-distributed KVServer object. 
@@ -125,6 +128,9 @@ public class KVServer implements IKVServer, Runnable {
 		this.zkPort = zkPort;
 		this.serverMetadata = null;
 		this.serverMetadata = null;
+		/* M4: Strict consistency model */
+		this.waitingForAck = false; 
+
 		// creating ZooKeeper client
 		try{
             final CountDownLatch latch = new CountDownLatch(1);
@@ -596,6 +602,10 @@ public class KVServer implements IKVServer, Runnable {
 			unlockWrite();
 		} 
 
+		while (waitingForAck){
+			awaitNode(1000);
+		}
+
 		return true;
 	}
 
@@ -646,8 +656,10 @@ public class KVServer implements IKVServer, Runnable {
 				String recvMsgSrc = recvMsg.getMessageSource();
 				KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.ACK_TRANSFER, null, null);
 				String targetName = zkRootDataPathNext + "/" + recvMsgSrc;
-				logger.info("Replicate One KV Pair 2: Sending KVAdmin Message to " + targetName);
-				logger.info("Replicate One KV Pair 2: Message content: " + sendMsg.toString());
+				System.out.println("Acknowledgement of transfer data: Sending KVAdmin Message to " + targetName);
+				System.out.println("Acknowledgement of transfer data: Message content: " + sendMsg.toString());
+				logger.info("Acknowledgement of transfer data: Sending KVAdmin Message to " + targetName);
+				logger.info("Acknowledgement of transfer data: Message content: " + sendMsg.toString());
 				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
 			} catch (InterruptedException | KeeperException e){
 				logger.error("Error occured in replicateData", e);
@@ -731,8 +743,10 @@ public class KVServer implements IKVServer, Runnable {
 				close();
 				break;
 			case TRANSFER_KV:	// TRANSFER_KV + null + kv-pairs
-				System.out.println(kvAdminMsgStr);
 				receiveKVData(kvAdminMsgStr);
+				break;
+			case ACK_TRANSFER:
+				waitingForAck = false;
 				break;
 			default:
 		}
