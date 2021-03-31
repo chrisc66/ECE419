@@ -4,6 +4,15 @@ ECE419 Distributed System
 
 University of Toronto, Spring 2021
 
+We spent days and nights to finish this project, a distributed storage server / hash table service implemented from scratch. There are around 6k+ lines of code, some good design descisions and some bad descisions. Feel free to explore around, but please don't copy paste directly. 
+
+If you are too lazy to read this long document, this is probably what you are looking for. 
+
+- [Milesstone 1](#milestone-1)
+- [Milesstone 2](#milestone-2)
+- [Milesstone 3](#milestone-3)
+- [Milesstone 4](#milestone-4)
+
 ## Project Overview
 
 This is a course project that implements a distributed storage service or a distributed hash-table-like system. The goal of this project is to implement a highly reliable and robust storage distributed service with the assistance of open-source tools such as ZooKeeper. 
@@ -130,22 +139,27 @@ This milestone builds on top of milestone 1 and 2 and extends the functionality 
 
 #### TODO Tasks / Known Issue
 
-- Junit tests are partially passing. 
+- Junit tests are partially passing (some intermittent failures).
 
 ### Milestone 4
 
-This milestone builds on top of all previous milestones. This milestone implements a relational database and supports SQL-like query. 
+This milestone is an open ended improvement to the key-value store service and it builds on top of all previous milestones. This milestone implements a strict consistency model and data subscription protocol.
 
 #### Change Log
 
-- change log
+- Strict consistency model such that KVServer only responds to `PUT` messages after replicas finish updating the key-value pair (`KVServer`, `KVCommunicationServer`, `KVAdminMessage`).
+- Data subscription protocol
+- Junit tests for newly added functionalities (`StrictConsistencyTest`).
+- Todo
 
 #### Design Document
 
-- [M4 Design Doc]() (update when avaliable)
+- [M4 Design Doc]() (Todo, update when avaliable)
 
 #### TODO Tasks / Known Issue
 
+- ZooKeeper zNodes could loss KVAdminMessage and we are not handling this case.
+- Possible bug under highly concurrent KVClient operations. 
 - Todo
 
 ## Build and Run Instructions 
