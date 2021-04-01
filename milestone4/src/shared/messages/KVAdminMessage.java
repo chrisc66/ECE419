@@ -14,6 +14,7 @@ import com.google.gson.reflect.TypeToken;
  * </p>
  * 
  * <ul>
+ * <li>Source Server: source of KVServer sending this message </li>
  * <li>KVAdminType: represented by String </li>
  * <li>Metadata: Map of servername and metadata in JSON format, or null </li>
  * <li>KV Data: Map of key and value represented in JSON format, or null</li>
@@ -24,32 +25,33 @@ public class KVAdminMessage {
     
     public enum KVAdminType {
         /* Undefined messages */
-        UNDEFINED,          // Error: undefined type
-        /* Acknowledgement for previous message */
-        // ACK,                // KVServer sends ACK back to ECS
+        UNDEFINED,          // Error: undefined / uninitialized type
         /* Type representing KVServer status */
-        // INIT,               // KVServer is created, only respond to ECS
         START,              // KVServer is created, respond to both ECS and KVClient
         UPDATE,             // KVServer needs to update metadata
         UPDATE_REMOVE,      // KVServer needs to update metadata when removing a node
         STOP,               // KVServer is stopped, only respond to ECS
         SHUTDOWN,           // KVServer is stopped, respond to neither ECS nor KVClient 
         /* Data transfer betwen distributed KVServers */
-		TRANSFER_KV        	// KVServer data transfer
+		TRANSFER_KV,       	// KVServer data transfer
+        ACK_TRANSFER        // KVServer acknowledgement to data transfer
     }
 
-    private final static String separator = "/";
+    private final static String SEPARATOR = "/";
+    private String messageSource;
     private KVAdminType messageType;
     private Map<String, Metadata> messageMetadata;  // servername, metadata
     private Map<String, String> messageKVData;      // key, value
 
     /**
      * Construct KVAdminMessage with message type, metadata and KV data.
-     * @param status KVAdminMessage type.
-     * @param ECSMetadata KVServer metadata (ECS hash ring).
+     * @param src source of this message, KVServer or ECS.
+     * @param type KVAdminMessage type.
+     * @param metadata KVServer metadata (ECS hash ring).
      * @param data KV pairs data.
      */
-    public KVAdminMessage(KVAdminType type, Map<String, Metadata> metadata, Map<String, String> data){
+    public KVAdminMessage(String src, KVAdminType type, Map<String, Metadata> metadata, Map<String, String> data){
+        this.messageSource = src;
         this.messageType = type;
         this.messageMetadata = metadata;
         this.messageKVData = data;
@@ -60,13 +62,14 @@ public class KVAdminMessage {
      * @param jsonObjString 
      */
     public KVAdminMessage(String msgString){
-        String[] tokens = msgString.split(separator);
-        this.messageType = getMessageType(tokens[0]);
+        String[] tokens = msgString.split(SEPARATOR);
+        this.messageSource = tokens[0];
+        this.messageType = getMessageType(tokens[1]);
         Gson gsonObj = new Gson();
         Type metadataType = new TypeToken<Map<String, Metadata>>(){}.getType();
         Type kvDataType = new TypeToken<Map<String, String>>(){}.getType();
-        this.messageMetadata = gsonObj.fromJson(tokens[1], metadataType);
-        this.messageKVData = gsonObj.fromJson(tokens[2], kvDataType);
+        this.messageMetadata = gsonObj.fromJson(tokens[2], metadataType);
+        this.messageKVData = gsonObj.fromJson(tokens[3], kvDataType);
     }
 
     /**
@@ -79,10 +82,6 @@ public class KVAdminMessage {
 
     public String getMessageTypeString(){
         switch(messageType){
-            // case ACK: 
-            //     return "ACK";
-            // case INIT: 
-            //     return "INIT";
             case START:
                 return "START";
             case UPDATE:
@@ -95,6 +94,8 @@ public class KVAdminMessage {
                 return "SHUTDOWN";
             case TRANSFER_KV:
                 return "TRANSFER_KV";
+            case ACK_TRANSFER:
+                return "ACK_TRANSFER";
             default:
                 return "UNDEFINED";
         }
@@ -102,10 +103,6 @@ public class KVAdminMessage {
 
     public KVAdminType getMessageType(String type){
         switch(type){
-            // case "ACK": 
-            //     return KVAdminType.ACK;
-            // case "INIT": 
-            //     return KVAdminType.INIT;
             case "START":
                 return KVAdminType.START;
             case "UPDATE":
@@ -118,9 +115,30 @@ public class KVAdminMessage {
                 return KVAdminType.SHUTDOWN;
             case "TRANSFER_KV":
                 return KVAdminType.TRANSFER_KV;
+            case "ACK_TRANSFER":
+                return KVAdminType.ACK_TRANSFER;
             default:
                 return KVAdminType.UNDEFINED;
         }
+    }
+
+    /**
+     * Get the source of KVAdminMessage
+     * @return return message source
+     */
+    public String getMessageSource(){
+        return this.messageSource;
+    }
+
+    /**
+     * Check whether the message is sent from ECS or another KVServer. 
+     * @return boolean indicating whether from ECS or not. 
+     */
+    public boolean fromECS(){
+        if (messageSource.equals("ECS"))
+            return true;
+        else
+            return false;
     }
 
     /**
@@ -135,15 +153,15 @@ public class KVAdminMessage {
      * Get the KV pairs of KVAdminMessage
      * @return return KV pair data
      */
-    public Map<String, String> getMessageKVData(){ 
-        return this.messageKVData; 
+    public Map<String, String> getMessageKVData(){
+        return this.messageKVData;
     }
 
     public String toString(){
         Gson gsonObj = new Gson();
         String metadataStr = gsonObj.toJson(messageMetadata);
         String kvDataStr = gsonObj.toJson(messageKVData);
-        String msgString = getMessageTypeString() + separator + metadataStr + separator + kvDataStr;
+        String msgString = messageSource + SEPARATOR + getMessageTypeString() + SEPARATOR + metadataStr + SEPARATOR + kvDataStr;
         return msgString;
     }
 

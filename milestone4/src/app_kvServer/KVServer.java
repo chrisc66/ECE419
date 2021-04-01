@@ -67,6 +67,9 @@ public class KVServer implements IKVServer, Runnable {
 	private static final String zkRootDataPathNext = "/StorageServerDataNext";	// ZooKeeper path to root zNode for data replication
 	private String zkServerDataPathNext;										// ZooKeeper path to child (KVServer) zNode
 
+	// M4: Strict Consistency
+	private boolean waitingForAck; 												// waiting for acknowledgement for KV_TRANSFER between servers
+
 	/**
 	 * Start KV Server at given port. 
 	 * Note: this constructor creates a non-distributed KVServer object. 
@@ -125,6 +128,9 @@ public class KVServer implements IKVServer, Runnable {
 		this.zkPort = zkPort;
 		this.serverMetadata = null;
 		this.serverMetadata = null;
+		/* M4: Strict consistency model */
+		this.waitingForAck = false; 
+
 		// creating ZooKeeper client
 		try{
             final CountDownLatch latch = new CountDownLatch(1);
@@ -467,10 +473,10 @@ public class KVServer implements IKVServer, Runnable {
 
 		String targetName = zkRootNodePath + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 		try {
-			KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutofRange);
+			KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.TRANSFER_KV, null, kvOutofRange);
 			logger.info("Move Data: Sending KVAdmin Message to " + targetName);
 			logger.info("Move Data: Message content: " + sendMsg.toString());
-			sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvOutofRange, targetName);
+			zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
 		} catch (InterruptedException | KeeperException e){
 			logger.error("Error occured in moveData", e);
 		}
@@ -506,10 +512,10 @@ public class KVServer implements IKVServer, Runnable {
 			// send to previous KVServer
 			String targetName = zkRootDataPathPrev + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 			try {
-				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvWithinRange);
+				KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.TRANSFER_KV, null, kvWithinRange);
 				logger.info("Replicate Data 1: Sending KVAdmin Message to " + targetName);
 				logger.info("Replicate Data 1: Message content: " + sendMsg.toString());
-				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvWithinRange, targetName);
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
 			} catch (InterruptedException | KeeperException e){
 				logger.error("Error occured in replicateData", e);
 			}
@@ -526,10 +532,10 @@ public class KVServer implements IKVServer, Runnable {
 			// send to next KVServer
 			String targetName = zkRootDataPathNext + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 			try {
-				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvWithinRange);
+				KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.TRANSFER_KV, null, kvWithinRange);
 				logger.info("Replicate Data 2: Sending KVAdmin Message to " + targetName);
 				logger.info("Replicate Data 2: Message content: " + sendMsg.toString());
-				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvWithinRange, targetName);
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
 			} catch (InterruptedException | KeeperException e){
 				logger.error("Error occured in replicateData", e);
 			}
@@ -565,10 +571,10 @@ public class KVServer implements IKVServer, Runnable {
 			// send to previous KVServer
 			String targetName = zkRootDataPathPrev + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 			try {
-				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate);
+				KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.TRANSFER_KV, null, kvUpdate);
 				logger.info("Replicate One KV Pair 1: Sending KVAdmin Message to " + targetName);
 				logger.info("Replicate One KV Pair 1: Message content: " + sendMsg.toString());
-				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate, targetName);
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
 			} catch (InterruptedException | KeeperException e){
 				logger.error("Error occured in replicateData", e);
 			}
@@ -585,16 +591,20 @@ public class KVServer implements IKVServer, Runnable {
 			// send to next KVServer
 			String targetName = zkRootDataPathNext + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
 			try {
-				KVAdminMessage sendMsg = new KVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate);
+				KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.TRANSFER_KV, null, kvUpdate);
 				logger.info("Replicate One KV Pair 2: Sending KVAdmin Message to " + targetName);
 				logger.info("Replicate One KV Pair 2: Message content: " + sendMsg.toString());
-				sendKVAdminMessage(KVAdminType.TRANSFER_KV, null, kvUpdate, targetName);
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
 			} catch (InterruptedException | KeeperException e){
 				logger.error("Error occured in replicateData", e);
 			}
 			// Leaving critical region and releasing write lock
 			unlockWrite();
 		} 
+
+		while (waitingForAck){
+			awaitNode(1000);
+		}
 
 		return true;
 	}
@@ -607,14 +617,22 @@ public class KVServer implements IKVServer, Runnable {
 	 * @param kvAdminMsgStr KVAdminMessage string
 	 */
 	public void receiveKVData(String kvAdminMsgStr){
+
 		// Create KVAdminMessage from input string
 		KVAdminMessage recvMsg = new KVAdminMessage(kvAdminMsgStr);
 		KVAdminType recvMsgType = recvMsg.getMessageType();
+
 		// Verify message type is TRANSFER_KV KV data
 		if (recvMsgType != KVAdminType.TRANSFER_KV){
 			logger.error("Unhandled case: KVAdminMessage type mismatch");
 			return;
 		}
+		// Verify message source should not be ECS
+		if (recvMsg.fromECS()){
+			logger.error("Unhandled case: KVAdminMessage source from ECSClient in KV_TRANSFER message");
+			return;
+		}
+
 		// Entering critical region and acquire write lock
 		lockWrite();
 		// Get KV pairs data and store into disk
@@ -631,6 +649,22 @@ public class KVServer implements IKVServer, Runnable {
 		}
 		// Leaving critical region and releasing write lock
 		unlockWrite();
+		
+		// Send ACK back to original KVServer if only one pair 
+		if (recvMsgKvData.size() == 1) {
+			try {
+				String recvMsgSrc = recvMsg.getMessageSource();
+				KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.ACK_TRANSFER, null, null);
+				String targetName = zkRootDataPathNext + "/" + recvMsgSrc;
+				System.out.println("Acknowledgement of transfer data: Sending KVAdmin Message to " + targetName);
+				System.out.println("Acknowledgement of transfer data: Message content: " + sendMsg.toString());
+				logger.info("Acknowledgement of transfer data: Sending KVAdmin Message to " + targetName);
+				logger.info("Acknowledgement of transfer data: Message content: " + sendMsg.toString());
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
+			} catch (InterruptedException | KeeperException e){
+				logger.error("Error occured in replicateData", e);
+			}
+		}
 	}
 
 	/** 
@@ -709,8 +743,10 @@ public class KVServer implements IKVServer, Runnable {
 				close();
 				break;
 			case TRANSFER_KV:	// TRANSFER_KV + null + kv-pairs
-				System.out.println(kvAdminMsgStr);
 				receiveKVData(kvAdminMsgStr);
+				break;
+			case ACK_TRANSFER:
+				waitingForAck = false;
 				break;
 			default:
 		}
@@ -726,11 +762,6 @@ public class KVServer implements IKVServer, Runnable {
         }
         return ret;
     }
-
-	public void sendKVAdminMessage (KVAdminType type, Map<String, Metadata> ECSMetadata, Map<String, String> data, String msgDest) throws KeeperException ,InterruptedException{
-		KVAdminMessage sendMsg = new KVAdminMessage(type, ECSMetadata, data);
-		zk.setData(msgDest, sendMsg.toBytes(), zk.exists(msgDest, false).getVersion());
-	}
 
 	public static void main(String[] args) throws IOException {
 		// create non-distributed KVServer instance

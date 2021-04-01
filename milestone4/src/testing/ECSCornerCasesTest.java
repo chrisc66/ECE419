@@ -13,7 +13,7 @@ public class ECSCornerCasesTest extends TestCase {
     
     // ECS Client
     // private static final String configFilePath = System.getProperty("user.dir") + "/ecs.config";
-    private static final String configFilePath = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone3/ecs.config";
+    private static final String configFilePath = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone4/ecs.config";
     // KVServer
     private static final String cacheStrategy = "NONE";
     private static final int cacheSize = 0;
