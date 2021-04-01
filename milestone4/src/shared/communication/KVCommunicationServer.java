@@ -230,9 +230,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                     catch (Exception e) {
                         sendMsgType = StatusType.PUT_ERROR;
                     }
-                    // update replicas
+                    // update replicas and boardcast subscription updates
                     if (kvServer.distributed()){
                         kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                        kvServer.boardcastSubscriptionUpdateToServers(message.getKey(), message.getValue());
                     }
                     // set logger message
                     if (sendMsgType == StatusType.PUT_SUCCESS){
@@ -275,9 +276,10 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         sendMsgType = StatusType.DELETE_ERROR;
                         logger.info("DELETE_ERROR: Value cannot be deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
                     }
-                    // update replicas
+                    // update replicas and boardcast subscription updates
                     if (kvServer.distributed()){
                         kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                        kvServer.boardcastSubscriptionUpdateToServers(message.getKey(), message.getValue());
                     }
                 }
                 break;

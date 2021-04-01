@@ -610,6 +610,56 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	/**
+	 * This function boardcasts one key-value pair update to all peer KVServers (including itself). 
+	 * Note: KVAdminMessages are transfered through ZooKeeper root node path. 
+	 * If value is non-empty string, perform insert / update operation
+	 * If value is empty string, perform delete operation
+	 * @param key Key to replicate.
+	 * @param Value Value to replicate. 
+	 * @return always return true. 
+	 */
+	public boolean boardcastSubscriptionUpdateToServers(String key, String value){
+		
+		// get out of range KV pairs and remove from disk storage
+		Map<String, String> kvUpdate = new HashMap<>();
+		kvUpdate.put(key, value);
+
+		// boardcast subscription message to all KVServers
+		Iterator<Map.Entry<String, Metadata>> it = serverMetadatasMap.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, Metadata> targetServer = it.next();
+			Metadata targetMetadata = targetServer.getValue();
+			String targetName = zkRootNodePath + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
+			KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.SUBSCRITION_UPDATE, null, kvUpdate);
+			// no need to send to itself
+			if (targetServer.getKey().equals(serverName)){
+				boardcastSubscriptionUpdateToClients(sendMsg);
+				continue;
+			}
+			// send to other servers
+			try {
+				logger.info("Subscription Update: Sending KVAdmin Message to " + targetName);
+				logger.info("Subscription Update: Message content: " + sendMsg.toString());
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
+			} catch (InterruptedException | KeeperException e){
+				logger.error("Error occured in replicateData", e);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * This function boardcasts one key-value pair update to all active KVClients. 
+	 * @param recvMsg
+	 */
+	public void boardcastSubscriptionUpdateToClients(KVAdminMessage recvMsg){
+		for (Thread client : clientThreads){
+			// send KVMessage to KVClients through KVMessage
+		}
+	}
+
+	/**
 	 * Receive KV messages from KVAdminMessage data transfer and store in disk storage.
 	 * 
 	 * Note: this function assumes it holds write lock. 
@@ -747,6 +797,9 @@ public class KVServer implements IKVServer, Runnable {
 				break;
 			case ACK_TRANSFER:
 				waitingForAck = false;
+				break;
+			case SUBSCRITION_UPDATE:
+				boardcastSubscriptionUpdateToClients(recvMsg);
 				break;
 			default:
 		}
