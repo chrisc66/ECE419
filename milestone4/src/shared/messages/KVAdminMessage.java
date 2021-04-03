@@ -98,6 +98,8 @@ public class KVAdminMessage {
                 return "TRANSFER_KV";
             case ACK_TRANSFER:
                 return "ACK_TRANSFER";
+            case SUBSCRITION_UPDATE:
+                return "SUBSCRITION_UPDATE";
             default:
                 return "UNDEFINED";
         }
@@ -119,6 +121,8 @@ public class KVAdminMessage {
                 return KVAdminType.TRANSFER_KV;
             case "ACK_TRANSFER":
                 return KVAdminType.ACK_TRANSFER;
+            case "SUBSCRITION_UPDATE":
+                return KVAdminType.SUBSCRITION_UPDATE;
             default:
                 return KVAdminType.UNDEFINED;
         }

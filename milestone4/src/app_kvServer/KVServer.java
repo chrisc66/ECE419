@@ -2,6 +2,8 @@ package app_kvServer;
 
 import shared.communication.KVCommunicationServer;
 import shared.messages.KVAdminMessage;
+import shared.messages.KVMessage;
+import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 import shared.messages.KVAdminMessage.KVAdminType;
 import logger.LogSetup;
@@ -36,6 +38,7 @@ public class KVServer implements IKVServer, Runnable {
 	private boolean running;													// flag to indicate if KVServer is running 
 
 	// M1: KVClient connections
+	private ArrayList<KVCommunicationServer> clients;							// list of active clients KVCommunicationServer
 	private ArrayList<Thread> clientThreads;									// list of active client threads (KVCommunicationServer)
 
 	// M1: KVServer disk persistent storage
@@ -87,6 +90,7 @@ public class KVServer implements IKVServer, Runnable {
 		this.serverSocket = null;
 		this.port = port;
 		this.cacheSize = cacheSize;
+		this.clients = new ArrayList<KVCommunicationServer>();
 		this.clientThreads = new ArrayList<Thread>();
 		this.serverName = getHostname()+":"+getPort();
 		if (storageFileExist())
@@ -109,6 +113,7 @@ public class KVServer implements IKVServer, Runnable {
 		this.serverSocket = null;
 		this.port = Integer.parseInt(serverName.split(":")[1]);	// port is contained in server name
 		this.cacheSize = 0;
+		this.clients = new ArrayList<KVCommunicationServer>();
 		this.clientThreads = new ArrayList<Thread>();
 		this.serverName = serverName;
 		if (storageFileExist())
@@ -342,6 +347,7 @@ public class KVServer implements IKVServer, Runnable {
 				try {
 					Socket clientSocket = serverSocket.accept();
 					KVCommunicationServer communication = new KVCommunicationServer(clientSocket, this);
+					clients.add(communication);
 					Thread clientThread = new Thread(communication);
 					clientThread.start();
 					clientThreads.add(clientThread);
@@ -654,8 +660,24 @@ public class KVServer implements IKVServer, Runnable {
 	 * @param recvMsg
 	 */
 	public void boardcastSubscriptionUpdateToClients(KVAdminMessage recvMsg){
-		for (Thread client : clientThreads){
-			// send KVMessage to KVClients through KVMessage
+		for (KVCommunicationServer client : clients){
+			Map.Entry<String, String> kvPair = recvMsg.getMessageKVData().entrySet().iterator().next();
+			try {
+				// send KVMessage to KVClients through KVMessage
+				KVMessage boardcastMsg = new KVMessageClass(KVMessage.StatusType.SUBSCRITION_UPDATE, kvPair.getKey(), kvPair.getValue());
+				if (!client.isSubscriptionUpdateOwner()){
+					client.send(boardcastMsg);
+				}
+				else {
+					client.setSubscriptionUpdateOwner(false);
+				}
+			} 
+			catch (IOException e) {
+                logger.error("Server lost client lost! ", e);
+            }
+            catch (Exception e) {
+                logger.error(e);
+            }
 		}
 	}
 

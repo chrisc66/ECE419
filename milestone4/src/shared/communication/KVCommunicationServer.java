@@ -37,10 +37,13 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
     private InputStream input;
     private OutputStream output;
 
+    private boolean subscriptionUpdateOwner;
+
     public KVCommunicationServer(Socket clientSocket, KVServer server) {
         this.clientSocket = clientSocket;
         this.kvServer = server;
         this.open = true;
+        this.subscriptionUpdateOwner = false;
         try {
             this.input = clientSocket.getInputStream();
             this.output = clientSocket.getOutputStream();
@@ -231,8 +234,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         sendMsgType = StatusType.PUT_ERROR;
                     }
                     // update replicas and boardcast subscription updates
-                    if (kvServer.distributed()){
+                    if (kvServer.distributed() && sendMsgType != StatusType.PUT_ERROR){
                         kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                        subscriptionUpdateOwner = true;
                         kvServer.boardcastSubscriptionUpdateToServers(message.getKey(), message.getValue());
                     }
                     // set logger message
@@ -277,8 +281,9 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
                         logger.info("DELETE_ERROR: Value cannot be deleted on server, key: " + message.getKey() + ", value: " + message.getValue());
                     }
                     // update replicas and boardcast subscription updates
-                    if (kvServer.distributed()){
+                    if (kvServer.distributed() && sendMsgType != StatusType.DELETE_ERROR){
                         kvServer.replicateOneKvPair(message.getKey(), message.getValue());
+                        subscriptionUpdateOwner = true;
                         kvServer.boardcastSubscriptionUpdateToServers(message.getKey(), message.getValue());
                     }
                 }
@@ -395,6 +400,14 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
             count ++;
 		}
         return metadata_jo;
+    }
+
+    public boolean isSubscriptionUpdateOwner(){
+        return this.subscriptionUpdateOwner;
+    }
+
+    public void setSubscriptionUpdateOwner(boolean val){
+        this.subscriptionUpdateOwner = val;
     }
 
 }

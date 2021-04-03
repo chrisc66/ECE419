@@ -176,6 +176,8 @@ public class KVMessageClass implements KVMessage, Serializable {
                 return StatusType.SERVER_WRITE_LOCK;
             case "SERVER_NOT_RESPONSIBLE":
                 return StatusType.SERVER_NOT_RESPONSIBLE;
+            case "SUBSCRITION_UPDATE":
+                return StatusType.SUBSCRITION_UPDATE;
             default:
                 return StatusType.UNDEFINED;
         }
@@ -215,6 +217,8 @@ public class KVMessageClass implements KVMessage, Serializable {
                 return "SERVER_WRITE_LOCK";
             case SERVER_NOT_RESPONSIBLE:
                 return "SERVER_NOT_RESPONSIBLE";
+            case SUBSCRITION_UPDATE:
+                return "SUBSCRITION_UPDATE";
             default:
                 return "UNDEFINED";
         }

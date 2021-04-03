@@ -23,6 +23,7 @@ public class KVStore implements KVCommInterface, Runnable {
 	private int serverPort;
 //	private MessageDigest md;//getInstance(String algorithm)
 	private List<Metadata> metadata;
+	private Thread clientListenerThread;
 	private int total_clients;		// only used for unit testing
 	private int clientID;			// only used for unit testing
 	private boolean testSuccess;	// only used for unit testing
@@ -61,7 +62,9 @@ public class KVStore implements KVCommInterface, Runnable {
 	public void connect() throws Exception {
 		try {
 			clientSocket = new Socket(serverAddress, serverPort);
-			kvCommunication = new KVCommunicationClient(clientSocket);
+			kvCommunication = new KVCommunicationClient(clientSocket, this);
+			clientListenerThread = new Thread(kvCommunication);
+			clientListenerThread.start();
 			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 			logger.info("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 		}
@@ -85,7 +88,7 @@ public class KVStore implements KVCommInterface, Runnable {
 			try {
 				KVMessageClass kvmessage = new KVMessageClass(KVMessage.StatusType.DISCONNECT, "", "");
 				kvCommunication.send(kvmessage);
-				kvCommunication.receive();
+				// kvCommunication.receive();
 				kvCommunication.close();
 				logger.debug("Disconnected from server.");
 			}
@@ -105,8 +108,7 @@ public class KVStore implements KVCommInterface, Runnable {
 	@Override
 	public KVMessage get(String key) throws Exception {
 		KVMessageClass kvmessage = new KVMessageClass(KVMessage.StatusType.GET, key, "");
-		KVMessage ret = sendKVmessage (kvmessage, key);
-		return ret;
+		return sendKVmessage (kvmessage, key);
 	}
 
 	public boolean isRunning() {
@@ -165,11 +167,13 @@ public class KVStore implements KVCommInterface, Runnable {
 
 	public void updateServer (KVMessage msg, String key) throws NoSuchAlgorithmException, Exception {
 		metadata = msg.getMetadata();
-		// for (Metadata m : metadata){
-		// 	logger.info("Printing updated metadata: " + m.serverAddress + " " + m.port + " " + m.start + " " + m.stop);
-		// }
+		for (Metadata m : metadata){
+			logger.info("Printing updated metadata: " + m.serverAddress + " " + m.port + " " + m.start + " " + m.stop);
+		}
 		BigInteger key_bi = mdKey(key);
+		logger.info("HERE 1, key = " + key);
 		for (int i = 0; i < metadata.size(); i++ ) {
+			logger.info("HERE 2");
 			Metadata obj = metadata.get(i);
 			// START <= STOP && key > START && key < STOP
 			// START >= STOP && key > START && key > STOP
@@ -177,11 +181,14 @@ public class KVStore implements KVCommInterface, Runnable {
 			if ((obj.start.compareTo(obj.stop) !=  1) && (key_bi.compareTo(obj.start) ==  1 && key_bi.compareTo(obj.stop) == -1) || 
 				(obj.start.compareTo(obj.stop) != -1) && (key_bi.compareTo(obj.start) ==  1 && key_bi.compareTo(obj.stop) ==  1) || 
 				(obj.start.compareTo(obj.stop) != -1) && (key_bi.compareTo(obj.start) == -1 && key_bi.compareTo(obj.stop) == -1) ){
+				logger.info("HERE 3");
 				disconnect();
+				logger.info("HERE 4");
 				String lastServerAddress = serverAddress;
 				int lastServerPort = serverPort;
 				serverAddress = obj.serverAddress;
 				serverPort = obj.port;
+				logger.info("Connecting to another server, " + serverAddress + ":" + serverPort);
 				try {
 					connect();
 				} catch (Exception e) {
@@ -190,6 +197,7 @@ public class KVStore implements KVCommInterface, Runnable {
 					connect();
 					logger.error("New connection to a metadata server failed, back to last server");
 				}
+				logger.info("HERE 5");
 				return;
 			}
 		}
@@ -207,34 +215,35 @@ public class KVStore implements KVCommInterface, Runnable {
 		// System.out.println(kvmessage.toString());
 		// System.out.println("=========================================");
 		
-		kvCommunication.send(kvmessage);
+		// kvCommunication.send(kvmessage);
 		KVMessage msg = null;
 
 		try {
-			msg = kvCommunication.receive();
+			// msg = kvCommunication.receive();
+			kvCommunication.send(kvmessage);
 		}
 		catch (IOException e){
-			msg = reconnectAndReceive(kvmessage, 0);
+			// msg = reconnectAndReceive(kvmessage, 0);
 		}
 		
-		// System.out.println("=========================================");
-		// System.out.println("KVClient receive KVMessage");
-		// System.out.println(msg.toString());
-		// System.out.println("=========================================");
+		// // System.out.println("=========================================");
+		// // System.out.println("KVClient receive KVMessage");
+		// // System.out.println(msg.toString());
+		// // System.out.println("=========================================");
 
-		if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
-			updateServer(msg, key);
-			// System.out.println("=========================================");
-			// System.out.println("SERVER_NOT_RESPONSIBLE: KVClient send KVMessage");
-			// System.out.println(kvmessage.toString());
-			// System.out.println("=========================================");
-			kvCommunication.send(kvmessage);
-			msg = kvCommunication.receive();
-			// System.out.println("=========================================");
-			// System.out.println("KVClient receive KVMessage");
-			// System.out.println(msg.toString());
-			// System.out.println("=========================================");
-		}
+		// if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
+		// 	updateServer(msg, key);
+		// 	// System.out.println("=========================================");
+		// 	// System.out.println("SERVER_NOT_RESPONSIBLE: KVClient send KVMessage");
+		// 	// System.out.println(kvmessage.toString());
+		// 	// System.out.println("=========================================");
+		// 	kvCommunication.send(kvmessage);
+		// 	msg = kvCommunication.receive();
+		// 	// System.out.println("=========================================");
+		// 	// System.out.println("KVClient receive KVMessage");
+		// 	// System.out.println(msg.toString());
+		// 	// System.out.println("=========================================");
+		// }
 
 		return msg;
 	}
@@ -260,10 +269,10 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.serverAddress = metadata.get(i).serverAddress;
 		this.serverPort = metadata.get(i).port;
 
+		disconnect();
 		try {
 			connect();
-			kvCommunication.send(sendMsg);
-			recvMsg = kvCommunication.receive();
+			// kvCommunication.send(sendMsg);
 		}
 		catch (Exception e){
 			recvMsg = reconnectAndReceive(sendMsg, i + 1);

@@ -2,10 +2,10 @@ package app_kvClient;
 
 import client.KVCommInterface;
 import client.KVStore;
+import shared.messages.KVMessage;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import shared.messages.KVMessage;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -102,15 +102,8 @@ public class KVClient implements IKVClient {
                             value.append(" ");
                         }
                     }
-                    KVMessage msg = kvStore.put(key, value.toString());
+                    kvStore.put(key, value.toString());
                     logger.info("Sending PUT message, " + "Key: " + key + ", Value: " + value.toString());
-                    if (msg.getStatus() == KVMessage.StatusType.GET_ERROR || 
-                        msg.getStatus() == KVMessage.StatusType.PUT_ERROR ||
-                        msg.getStatus() == KVMessage.StatusType.DELETE_ERROR ||
-                        msg.getStatus() == KVMessage.StatusType.SERVER_STOPPED){
-                        printError("Received message: " + msg.getStatusString());
-                        logger.error(msg.getStatusString());
-                    }
                 } 
                 else {
                     printError("Not connected to server!");
@@ -126,14 +119,7 @@ public class KVClient implements IKVClient {
             if(tokens.length >= 2) {
                 if(kvStore != null && kvStore.isRunning()){
                     String key = tokens[1];
-                    KVMessage msg = kvStore.get(key);
-                    if (msg.getStatus() != KVMessage.StatusType.GET_SUCCESS) {
-                        printError("Received message: " + msg.getStatusString());
-                        logger.error(msg.getStatusString());
-                    } else {
-                        printOutput("Key: " + msg.getKey() + ", Value: " + msg.getValue());
-                        logger.info("Sending GET message, " + "Key: " + msg.getKey() + ", Value: " + msg.getValue());
-                    }
+                    kvStore.get(key);
                 }
                 else {
                     printError("Not connected to server!");
@@ -181,10 +167,6 @@ public class KVClient implements IKVClient {
 
     private void printError(String error){
         System.out.println("Error! " +  error);
-    }
-
-    private void printOutput(String out){
-        System.out.println(out);
     }
 
     private void printPossibleLogLevels() {
