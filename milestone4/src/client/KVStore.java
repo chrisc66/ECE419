@@ -12,18 +12,28 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class KVStore implements KVCommInterface, Runnable {
 	
+	/* M1: non-distributed storage service */
 	private static Logger logger = Logger.getRootLogger();
 	private Socket clientSocket;
 	private KVCommunicationClient kvCommunication;
 	private String serverAddress;
 	private int serverPort;
-//	private MessageDigest md;//getInstance(String algorithm)
+	private static final String PROMPT = "Client> ";
+
+	/* M2, M3: distributed storage service */
 	private List<Metadata> metadata;
+	
+	/* M4: Data subscription mechanism */
 	private Thread clientListenerThread;
+	private List<String> subscribtionList;
+	private boolean subscribingAll;
+	
+	/* Unit testing variables */
 	private int total_clients;		// only used for unit testing
 	private int clientID;			// only used for unit testing
 	private boolean testSuccess;	// only used for unit testing
@@ -40,6 +50,8 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.total_clients = -1;
 		this.clientID = -1;
 		this.testSuccess = true;
+		this.subscribtionList = new ArrayList<>();
+		this.subscribingAll = false;
 	}
 
 	/**
@@ -56,6 +68,8 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.total_clients = total_clients;
 		this.clientID = clientID;
 		this.testSuccess = true;
+		this.subscribtionList = new ArrayList<>();
+		this.subscribingAll = false;
 	}
 
 	@Override
@@ -171,9 +185,7 @@ public class KVStore implements KVCommInterface, Runnable {
 			logger.info("Printing updated metadata: " + m.serverAddress + " " + m.port + " " + m.start + " " + m.stop);
 		}
 		BigInteger key_bi = mdKey(key);
-		logger.info("HERE 1, key = " + key);
 		for (int i = 0; i < metadata.size(); i++ ) {
-			logger.info("HERE 2");
 			Metadata obj = metadata.get(i);
 			// START <= STOP && key > START && key < STOP
 			// START >= STOP && key > START && key > STOP
@@ -181,9 +193,7 @@ public class KVStore implements KVCommInterface, Runnable {
 			if ((obj.start.compareTo(obj.stop) !=  1) && (key_bi.compareTo(obj.start) ==  1 && key_bi.compareTo(obj.stop) == -1) || 
 				(obj.start.compareTo(obj.stop) != -1) && (key_bi.compareTo(obj.start) ==  1 && key_bi.compareTo(obj.stop) ==  1) || 
 				(obj.start.compareTo(obj.stop) != -1) && (key_bi.compareTo(obj.start) == -1 && key_bi.compareTo(obj.stop) == -1) ){
-				logger.info("HERE 3");
 				disconnect();
-				logger.info("HERE 4");
 				String lastServerAddress = serverAddress;
 				int lastServerPort = serverPort;
 				serverAddress = obj.serverAddress;
@@ -197,7 +207,6 @@ public class KVStore implements KVCommInterface, Runnable {
 					connect();
 					logger.error("New connection to a metadata server failed, back to last server");
 				}
-				logger.info("HERE 5");
 				return;
 			}
 		}
@@ -262,8 +271,11 @@ public class KVStore implements KVCommInterface, Runnable {
 		
 		System.out.println("Cannot find server. Reconnecting ... ");
 		logger.info("Cannot find server. Reconnecting ... ");
-		if (metadata == null || i >= metadata.size())
+		if (metadata == null || i >= metadata.size()){
+			logger.error("Cannot find avaliable server to connect");
+			System.out.print(PROMPT);
 			throw new Exception("Cannot find avaliable server to connect");
+		}
 
 		KVMessage recvMsg = null;
 		this.serverAddress = metadata.get(i).serverAddress;
@@ -279,6 +291,30 @@ public class KVStore implements KVCommInterface, Runnable {
 		}
 		
 		return recvMsg;
+	}
+
+	public void subscribe(boolean all){
+		subscribingAll = true;
+	}
+
+	public void subscribe(String key){
+		subscribtionList.add(key);
+	}
+	
+	public void unsubscribe(boolean all){
+		subscribingAll = false;
+		subscribtionList.clear();
+	}
+
+	public void unsubscribe(String key){
+		subscribtionList.remove(key);
+	}
+
+	public boolean subscribed(String key){
+		if (subscribingAll){
+			return true;
+		}
+		return subscribtionList.contains(key);
 	}
 
 }
