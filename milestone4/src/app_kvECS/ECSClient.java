@@ -175,7 +175,7 @@ public class ECSClient implements IECSClient{
     @Override
     public boolean stop() {
         // Send KVAdminMessage with type STOP
-        KVAdminMessage sendMsg = new KVAdminMessage("ECSClient", KVAdminType.STOP, null, null);
+        KVAdminMessage sendMsg = new KVAdminMessage("ECS", KVAdminType.STOP, null, null);
         for (String server : curServers){
             try {
                 serverStatusMap.put(server, IECSNode.STATUS.IDLE);
