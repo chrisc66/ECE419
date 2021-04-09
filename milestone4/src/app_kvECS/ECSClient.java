@@ -224,6 +224,7 @@ public class ECSClient implements IECSClient{
     }
 
     public IECSNode addNode(String cacheStrategy, int cacheSize, String newServerName) {
+        
         serverStatusMap.put(newServerName, IECSNode.STATUS.IDLE);
         curServers.add(newServerName);
         
@@ -273,6 +274,8 @@ public class ECSClient implements IECSClient{
         catch (KeeperException | InterruptedException | IllegalArgumentException e) {
             logger.error("Error adding new node", e);
         }
+
+        System.out.println("Successfully added new KVServer node: " + newServerName);
 
         return newNode;
     }
@@ -396,6 +399,9 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
+
+        System.out.println("Successfully removed KVServer node: " + nodeName);
+
         return true;
     }
 
