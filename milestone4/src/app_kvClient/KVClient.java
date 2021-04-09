@@ -255,12 +255,13 @@ public class KVClient implements IKVClient {
         System.out.println("Possible commands are:");
         System.out.println("    connect <ip_address> <port>");
         System.out.println("    disconnect");
-        System.out.println("    quit");
-        System.out.println("    help");
-        System.out.println("    loglevel <level>");
         System.out.println("    put <key> <value>");
         System.out.println("    get <key>");
-        System.out.println("    subscribe <key> | all");
+        System.out.println("    subscribe <keys> | all");
+        System.out.println("    unsubscribe <keys> | all");
+        System.out.println("    loglevel <level>");
+        System.out.println("    quit");
+        System.out.println("    help");
     }
 
     public static void main(String[] args) throws Exception{
