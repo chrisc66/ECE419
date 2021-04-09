@@ -620,7 +620,7 @@ public class ECSClient implements IECSClient{
 
     public static void main(String[] args) {
         try {
-            new LogSetup("logs/ecs.log", Level.INFO);
+            new LogSetup("logs/ecs.log", Level.OFF);
             if (args.length == 0) {
                 args = new String[1];
                 args[0] = "ecs.config";
