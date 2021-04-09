@@ -359,9 +359,14 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean removeNodes(Collection<String> nodeNames, boolean crashDetected) {
-        Collection<String> toRemove = new ArrayList<String>(nodeNames);
-        for (String server : toRemove){
-            removeNode(server, crashDetected);
+        
+        for (String nodeName : nodeNames){
+            if (curServers.contains(nodeName)){
+                removeNode(nodeName, crashDetected);
+            }
+            else {
+                System.out.println("Skipping illegal node name: " + nodeName);
+            }
         }
         return true;
     }
