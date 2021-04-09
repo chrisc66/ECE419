@@ -219,8 +219,11 @@ public class KVCommunicationClient implements IKVCommunication, Runnable {
                         break;
                     case SUBSCRITION_UPDATE:
                         if (kvStore.subscribed(recvMsg.getKey())){
-                            System.out.println("Received message: " + recvMsg.getStatusString());
-                            System.out.println("Data Update: key = " + recvMsg.getKey() + ", value = " + recvMsg.getValue());
+                            System.out.println();
+                            if (recvMsg.getValue().equals(""))
+                                System.out.println("Data Deleted: key = " + recvMsg.getKey());
+                            else
+                                System.out.println("Data Updated: key = " + recvMsg.getKey() + ", value = " + recvMsg.getValue());
                             System.out.print(PROMPT);
                         }
                         break;

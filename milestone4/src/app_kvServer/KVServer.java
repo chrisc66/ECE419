@@ -866,7 +866,7 @@ public class KVServer implements IKVServer, Runnable {
 			int port = Integer.parseInt(args[0]);
 			int cacheSize = Integer.parseInt(args[1]);
 			String logString = "logs/server." + args[0] + ".log";
-			new LogSetup(logString, Level.INFO);
+			new LogSetup(logString, Level.OFF);
 			String strategy = args[2];
 			KVServer kvServer = new KVServer(port, cacheSize, strategy);
 			kvServer.run();
@@ -878,7 +878,7 @@ public class KVServer implements IKVServer, Runnable {
 			int zkPort = Integer.parseInt(args[1]);
 			String zkHostname = args[2];
 			String logString = "logs/server." + serverName + ".log";
-			new LogSetup(logString, Level.INFO);
+			new LogSetup(logString, Level.OFF);
 			KVServer kvServer = new KVServer(serverName, zkPort, zkHostname);
 			kvServer.run();
 			System.exit(0);

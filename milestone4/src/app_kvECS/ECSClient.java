@@ -224,6 +224,7 @@ public class ECSClient implements IECSClient{
     }
 
     public IECSNode addNode(String cacheStrategy, int cacheSize, String newServerName) {
+        
         serverStatusMap.put(newServerName, IECSNode.STATUS.IDLE);
         curServers.add(newServerName);
         
@@ -273,6 +274,8 @@ public class ECSClient implements IECSClient{
         catch (KeeperException | InterruptedException | IllegalArgumentException e) {
             logger.error("Error adding new node", e);
         }
+
+        System.out.println("Successfully added new KVServer node: " + newServerName);
 
         return newNode;
     }
@@ -356,9 +359,14 @@ public class ECSClient implements IECSClient{
 
     @Override
     public boolean removeNodes(Collection<String> nodeNames, boolean crashDetected) {
-        Collection<String> toRemove = new ArrayList<String>(nodeNames);
-        for (String server : toRemove){
-            removeNode(server, crashDetected);
+        
+        for (String nodeName : nodeNames){
+            if (curServers.contains(nodeName)){
+                removeNode(nodeName, crashDetected);
+            }
+            else {
+                System.out.println("Skipping illegal node name: " + nodeName);
+            }
         }
         return true;
     }
@@ -396,6 +404,9 @@ public class ECSClient implements IECSClient{
                 return false;
             }
         }
+
+        System.out.println("Successfully removed KVServer node: " + nodeName);
+
         return true;
     }
 
@@ -620,7 +631,7 @@ public class ECSClient implements IECSClient{
 
     public static void main(String[] args) {
         try {
-            new LogSetup("logs/ecs.log", Level.INFO);
+            new LogSetup("logs/ecs.log", Level.OFF);
             if (args.length == 0) {
                 args = new String[1];
                 args[0] = "ecs.config";
