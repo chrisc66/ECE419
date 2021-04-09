@@ -126,6 +126,12 @@ public interface KVMessage {
     //  * @return String of returned element
     //  */
 	// public String extractElement(String msg, int targetElementIdx);
+
+	/**
+	 * To string
+	 * @return
+	 */
+	public String toString();
 }
 
 

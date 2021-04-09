@@ -375,8 +375,30 @@ public class KVServer implements IKVServer, Runnable {
 
 	@Override
 	public void close(){
+		// delete ZooKeeper nodes before stop
+		if (distributed){
+			try {
+				logger.info("Removing znodes 1");
+				if (zk.exists(zkServerNodePath, false) != null) {
+					zk.delete(zkServerNodePath, zk.exists(zkServerNodePath, false).getVersion());
+				}
+				logger.info("Removing znodes 2");
+				if (zk.exists(zkServerDataPathPrev, false) != null) {
+					zk.delete(zkServerDataPathPrev, zk.exists(zkRootDataPathPrev, false).getVersion());
+				}
+				logger.info("Removing znodes 3");
+				if (zk.exists(zkServerDataPathNext, false) != null) {
+					zk.delete(zkServerDataPathNext, zk.exists(zkRootDataPathNext, false).getVersion());
+				}
+				logger.info("Removing znodes 4");
+			} catch (KeeperException | InterruptedException e) {
+				logger.error("ZooKeeper exception occured when deleting znodes.");
+				logger.error(e);
+			}
+			serverStatus = DistributedServerStatus.SHUTDOWN;
+		}
+
 		running = false;
-		serverStatus = DistributedServerStatus.SHUTDOWN;
 		try {
 			for (int i = 0; i < clientThreads.size(); i++){
 				clientThreads.get(i).interrupt();	// interrupt and stop all threads

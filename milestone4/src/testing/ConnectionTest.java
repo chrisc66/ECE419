@@ -22,7 +22,9 @@ public class ConnectionTest extends TestCase {
 
 	@After
 	public void tearDown(){
-		// kvServer.close();
+		kvServer.clearCache();
+		kvServer.clearStorage();
+		kvServer.close();
 	}
 
 	@Test

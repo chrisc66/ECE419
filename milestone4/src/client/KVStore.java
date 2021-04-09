@@ -6,7 +6,6 @@ import shared.messages.KVMessage;
 import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -34,9 +33,11 @@ public class KVStore implements KVCommInterface, Runnable {
 	private boolean subscribingAll;
 	
 	/* Unit testing variables */
-	private int total_clients;		// only used for unit testing
-	private int clientID;			// only used for unit testing
-	private boolean testSuccess;	// only used for unit testing
+	private int total_clients;				// total number of clients
+	private int clientID;					// cliend identifier within all clients
+	private boolean testSuccess;			// flag for test success
+	public volatile KVMessage recvMessage; 	// record last received message
+	public volatile boolean newMessage; 	// flag for unread new message 
 
 	/**
 	 * Initialize KVStore with KVServer address and port.
@@ -52,6 +53,8 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.testSuccess = true;
 		this.subscribtionList = new ArrayList<>();
 		this.subscribingAll = false;
+		this.recvMessage = null;
+		this.newMessage = false;
 	}
 
 	/**
@@ -70,6 +73,8 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.testSuccess = true;
 		this.subscribtionList = new ArrayList<>();
 		this.subscribingAll = false;
+		this.recvMessage = null;
+		this.newMessage = false;
 	}
 
 	@Override
@@ -226,14 +231,18 @@ public class KVStore implements KVCommInterface, Runnable {
 		
 		// kvCommunication.send(kvmessage);
 		KVMessage msg = null;
+		newMessage = false;
 
-		try {
-			// msg = kvCommunication.receive();
-			kvCommunication.send(kvmessage);
-		}
-		catch (IOException e){
-			// msg = reconnectAndReceive(kvmessage, 0);
-		}
+		kvCommunication.send(kvmessage);
+		while (!newMessage){}
+
+		// try {
+		// 	// msg = kvCommunication.receive();
+		// 	kvCommunication.send(kvmessage);
+		// }
+		// catch (IOException e){
+		// 	// msg = reconnectAndReceive(kvmessage, 0);
+		// }
 		
 		// // System.out.println("=========================================");
 		// // System.out.println("KVClient receive KVMessage");

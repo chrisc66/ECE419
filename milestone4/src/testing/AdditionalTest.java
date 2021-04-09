@@ -38,8 +38,10 @@ public class AdditionalTest extends TestCase {
 
 	@After
 	public void tearDown(){
-		// kvClient.disconnect();
-		// kvServer.close();
+		kvClient.disconnect();
+		kvServer.clearCache();
+		kvServer.clearStorage();
+		kvServer.close();
 	}
 	
 	@Test
@@ -130,20 +132,21 @@ public class AdditionalTest extends TestCase {
 		for (int i = 0; i < requestNum; i ++){
 			assertEquals(s, DB.get("k"));
 		}
+		DB.clearDisk();
 	}
 
 	@Test
 	public void testEmptyKey() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
+		
 		String key = "";
 		String value = "testEmptyKey";
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -151,22 +154,20 @@ public class AdditionalTest extends TestCase {
 		}
 		// Allow empty string as key
 		assertTrue(ex == null);
-		assertTrue(putResponse.getStatus() == StatusType.PUT_SUCCESS);
-		assertTrue(getResponse.getStatus() == StatusType.GET_SUCCESS);
+		assertTrue(response.getStatus() == StatusType.GET_SUCCESS);
 	}
 	
 	@Test
 	public void testMaxLengthKey() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "I_AM_MAXIMUM_LENGTH_";	// Maximum length of 20 characters / 20 bytes
 		String value = "testMaxLengthKey";
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -174,22 +175,20 @@ public class AdditionalTest extends TestCase {
 		}
 		// Maximum allowed length is 20 bytes / 20 characters
 		assertTrue(ex == null);
-		assertTrue(putResponse.getStatus() == StatusType.PUT_SUCCESS);
-		assertTrue(getResponse.getStatus() == StatusType.GET_SUCCESS);
+		assertTrue(response.getStatus() == StatusType.GET_SUCCESS);
 	}
 
 	@Test
 	public void testKeyExceedingMaxLength() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "I_AM_LONGER_THAN_MAXIMUM_LENGTH_";	// Exceeding maximum length of 20 characters / 20 bytes
 		String value = "testKeyExceedingMaxLength";
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -198,22 +197,20 @@ public class AdditionalTest extends TestCase {
 		// Exceeding maximum allowed length of 20 bytes / 20 characters
 		// an exception should be thrown and no KVMessage returned
 		assertTrue(ex != null);
-		assertTrue(putResponse == null);
-		assertTrue(getResponse == null);
+		assertTrue(response == null);
 	}
 
 	@Test
 	public void testEmptyValue() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testEmptyValue";
 		String value = "";
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -221,8 +218,7 @@ public class AdditionalTest extends TestCase {
 		}
 		// Empty string as value is a delete operation
 		assertTrue(ex == null);
-		assertTrue(putResponse.getStatus() == StatusType.DELETE_ERROR);
-		assertTrue(getResponse.getStatus() == StatusType.GET_ERROR);	
+		assertTrue(response.getStatus() == StatusType.GET_ERROR);	
 	}
 
 	/**
@@ -257,16 +253,15 @@ public class AdditionalTest extends TestCase {
 
 	@Test
 	public void testValueMaxLength() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testValueMaxLength";
 		String value = getRandomString(120*1024); // 120 * 1024 bytes / characters
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -274,22 +269,20 @@ public class AdditionalTest extends TestCase {
 		}
 		// Maximum allowed length is 120 * 1024 bytes / characters
 		assertTrue(ex == null);
-		assertTrue(putResponse.getStatus() == StatusType.PUT_SUCCESS);
-		assertTrue(getResponse.getStatus() == StatusType.GET_SUCCESS);	
+		assertTrue(response.getStatus() == StatusType.GET_SUCCESS);	
 	}
 
 	@Test
 	public void testValueExceedingMaxLength() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testValueExceeding";
 		String value = getRandomString(120*1024+1); // 120 * 1024 bytes / characters
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -298,22 +291,20 @@ public class AdditionalTest extends TestCase {
 		// Maximum allowed length is 120 * 1024 bytes / characters
 		// an exception should be thrown and no KVMessage returned
 		assertTrue(ex != null);
-		assertTrue(putResponse == null);
-		assertTrue(getResponse == null);
+		assertTrue(response == null);
 	}
 
 	@Test
 	public void testSendRamdomByteArray() {
-		kvClient = new KVStore("localhost", 50000, 1, 1);
 		String key = "testRndByteArr";
 		String value = getRandomByteArray(10); // 10 bytes / characters
-		KVMessage putResponse = null;
-		KVMessage getResponse = null;
+		KVMessage response = null;
 		Exception ex = null;
 		try {
 			kvClient.connect();
-			putResponse = kvClient.put(key, value);
-			getResponse = kvClient.get(key);
+			kvClient.put(key, value);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 			kvClient.disconnect();
 		} 
 		catch (Exception e) {
@@ -321,8 +312,7 @@ public class AdditionalTest extends TestCase {
 		}
 		// Maximum allowed length is 120 * 1024 bytes / characters
 		assertTrue(ex == null);
-		assertTrue(putResponse.getStatus() == StatusType.PUT_SUCCESS);
-		assertTrue(getResponse.getStatus() == StatusType.GET_SUCCESS);	
+		assertTrue(response.getStatus() == StatusType.GET_SUCCESS);	
 	}
 
 }

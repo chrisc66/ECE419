@@ -6,6 +6,7 @@ import client.KVStore;
 import shared.messages.KVMessage;
 import shared.messages.KVMessage.StatusType;
 import shared.messages.KVMessageClass;
+import shared.messages.KVAdminMessage.KVAdminType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -156,7 +157,13 @@ public class KVCommunicationClient implements IKVCommunication, Runnable {
     public void run() {
         while (open){
             try {
+                // receive and update variables
                 KVMessage recvMsg = receive();
+                kvStore.recvMessage = recvMsg;
+                // do not update flag if message is invisible to user
+                if (recvMsg.getStatus() != KVMessage.StatusType.SERVER_NOT_RESPONSIBLE && recvMsg.getStatus() != KVMessage.StatusType.SUBSCRITION_UPDATE)
+                    kvStore.newMessage = true;
+                
                 logger.info(recvMsg.toString());
                 switch (recvMsg.getStatus()){
                     case PUT_SUCCESS:
