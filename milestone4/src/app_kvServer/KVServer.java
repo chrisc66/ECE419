@@ -2,6 +2,8 @@ package app_kvServer;
 
 import shared.communication.KVCommunicationServer;
 import shared.messages.KVAdminMessage;
+import shared.messages.KVMessage;
+import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 import shared.messages.KVAdminMessage.KVAdminType;
 import logger.LogSetup;
@@ -36,6 +38,7 @@ public class KVServer implements IKVServer, Runnable {
 	private boolean running;													// flag to indicate if KVServer is running 
 
 	// M1: KVClient connections
+	private ArrayList<KVCommunicationServer> clients;							// list of active clients KVCommunicationServer
 	private ArrayList<Thread> clientThreads;									// list of active client threads (KVCommunicationServer)
 
 	// M1: KVServer disk persistent storage
@@ -87,6 +90,7 @@ public class KVServer implements IKVServer, Runnable {
 		this.serverSocket = null;
 		this.port = port;
 		this.cacheSize = cacheSize;
+		this.clients = new ArrayList<KVCommunicationServer>();
 		this.clientThreads = new ArrayList<Thread>();
 		this.serverName = getHostname()+":"+getPort();
 		if (storageFileExist())
@@ -109,6 +113,7 @@ public class KVServer implements IKVServer, Runnable {
 		this.serverSocket = null;
 		this.port = Integer.parseInt(serverName.split(":")[1]);	// port is contained in server name
 		this.cacheSize = 0;
+		this.clients = new ArrayList<KVCommunicationServer>();
 		this.clientThreads = new ArrayList<Thread>();
 		this.serverName = serverName;
 		if (storageFileExist())
@@ -342,6 +347,7 @@ public class KVServer implements IKVServer, Runnable {
 				try {
 					Socket clientSocket = serverSocket.accept();
 					KVCommunicationServer communication = new KVCommunicationServer(clientSocket, this);
+					clients.add(communication);
 					Thread clientThread = new Thread(communication);
 					clientThread.start();
 					clientThreads.add(clientThread);
@@ -369,8 +375,30 @@ public class KVServer implements IKVServer, Runnable {
 
 	@Override
 	public void close(){
+		// delete ZooKeeper nodes before stop
+		if (distributed){
+			try {
+				logger.info("Removing znodes 1");
+				if (zk.exists(zkServerNodePath, false) != null) {
+					zk.delete(zkServerNodePath, zk.exists(zkServerNodePath, false).getVersion());
+				}
+				logger.info("Removing znodes 2");
+				if (zk.exists(zkServerDataPathPrev, false) != null) {
+					zk.delete(zkServerDataPathPrev, zk.exists(zkRootDataPathPrev, false).getVersion());
+				}
+				logger.info("Removing znodes 3");
+				if (zk.exists(zkServerDataPathNext, false) != null) {
+					zk.delete(zkServerDataPathNext, zk.exists(zkRootDataPathNext, false).getVersion());
+				}
+				logger.info("Removing znodes 4");
+			} catch (KeeperException | InterruptedException e) {
+				logger.error("ZooKeeper exception occured when deleting znodes.");
+				logger.error(e);
+			}
+			serverStatus = DistributedServerStatus.SHUTDOWN;
+		}
+
 		running = false;
-		serverStatus = DistributedServerStatus.SHUTDOWN;
 		try {
 			for (int i = 0; i < clientThreads.size(); i++){
 				clientThreads.get(i).interrupt();	// interrupt and stop all threads
@@ -610,6 +638,72 @@ public class KVServer implements IKVServer, Runnable {
 	}
 
 	/**
+	 * This function boardcasts one key-value pair update to all peer KVServers (including itself). 
+	 * Note: KVAdminMessages are transfered through ZooKeeper root node path. 
+	 * If value is non-empty string, perform insert / update operation
+	 * If value is empty string, perform delete operation
+	 * @param key Key to replicate.
+	 * @param Value Value to replicate. 
+	 * @return always return true. 
+	 */
+	public boolean boardcastSubscriptionUpdateToServers(String key, String value){
+		
+		// get out of range KV pairs and remove from disk storage
+		Map<String, String> kvUpdate = new HashMap<>();
+		kvUpdate.put(key, value);
+
+		// boardcast subscription message to all KVServers
+		Iterator<Map.Entry<String, Metadata>> it = serverMetadatasMap.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<String, Metadata> targetServer = it.next();
+			Metadata targetMetadata = targetServer.getValue();
+			String targetName = zkRootNodePath + "/" + targetMetadata.serverAddress + ":" + targetMetadata.port;
+			KVAdminMessage sendMsg = new KVAdminMessage(serverName, KVAdminType.SUBSCRITION_UPDATE, null, kvUpdate);
+			// no need to send to itself
+			if (targetServer.getKey().equals(serverName)){
+				boardcastSubscriptionUpdateToClients(sendMsg);
+				continue;
+			}
+			// send to other servers
+			try {
+				logger.info("Subscription Update: Sending KVAdmin Message to " + targetName);
+				logger.info("Subscription Update: Message content: " + sendMsg.toString());
+				zk.setData(targetName, sendMsg.toBytes(), zk.exists(targetName, false).getVersion());
+			} catch (InterruptedException | KeeperException e){
+				logger.error("Error occured in replicateData", e);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * This function boardcasts one key-value pair update to all active KVClients. 
+	 * @param recvMsg
+	 */
+	public void boardcastSubscriptionUpdateToClients(KVAdminMessage recvMsg){
+		for (KVCommunicationServer client : clients){
+			Map.Entry<String, String> kvPair = recvMsg.getMessageKVData().entrySet().iterator().next();
+			try {
+				// send KVMessage to KVClients through KVMessage
+				KVMessage boardcastMsg = new KVMessageClass(KVMessage.StatusType.SUBSCRITION_UPDATE, kvPair.getKey(), kvPair.getValue());
+				if (!client.isSubscriptionUpdateOwner()){
+					client.send(boardcastMsg);
+				}
+				else {
+					client.setSubscriptionUpdateOwner(false);
+				}
+			} 
+			catch (IOException e) {
+                logger.error("Server lost client lost! ", e);
+            }
+            catch (Exception e) {
+                logger.error(e);
+            }
+		}
+	}
+
+	/**
 	 * Receive KV messages from KVAdminMessage data transfer and store in disk storage.
 	 * 
 	 * Note: this function assumes it holds write lock. 
@@ -747,6 +841,9 @@ public class KVServer implements IKVServer, Runnable {
 				break;
 			case ACK_TRANSFER:
 				waitingForAck = false;
+				break;
+			case SUBSCRITION_UPDATE:
+				boardcastSubscriptionUpdateToClients(recvMsg);
 				break;
 			default:
 		}

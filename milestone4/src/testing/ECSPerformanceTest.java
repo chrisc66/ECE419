@@ -70,6 +70,8 @@ public class ECSPerformanceTest extends TestCase {
     @After
     public void tearDown() {
         kvClient.disconnect();
+        List<String> curServers = ecs.getCurrentServers();
+        ecs.removeNodes(curServers, false);
     }
 
     @Test
@@ -84,7 +86,8 @@ public class ECSPerformanceTest extends TestCase {
                 kvClient.put(key, data_16_str);
                 kvClient.put(key, data_16_str);
                 kvClient.put(key, data_16_str);
-                getOutput = kvClient.get(key).getValue();
+                kvClient.get(key);
+                getOutput = kvClient.recvMessage.getValue();
             } catch (Exception e) {
                 System.out.println("Performance test error!");
             }
@@ -109,7 +112,8 @@ public class ECSPerformanceTest extends TestCase {
         for (int i = 0; i < iteration; i++) {
             try {
                 kvClient.put(key, data_16_str);
-                getOutput = kvClient.get(key).getValue();
+                kvClient.get(key);
+                getOutput = kvClient.recvMessage.getValue();
             } catch (Exception e) {
                 System.out.println("Performance test error!");
             }
@@ -135,10 +139,11 @@ public class ECSPerformanceTest extends TestCase {
             try {
                 kvClient.put(key, data_16_str);
 
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
+                kvClient.get(key);
+                kvClient.get(key);
+                kvClient.get(key);
+                kvClient.get(key);
+                getOutput = kvClient.recvMessage.getValue();
             } catch (Exception e) {
                 System.out.println("Performance test error!");
             }
@@ -195,11 +200,12 @@ public class ECSPerformanceTest extends TestCase {
         long startTime = System.currentTimeMillis();
         for (int i = 0; i < iteration; i++) {
             try {
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
-                getOutput = kvClient.get(key).getValue();
+                kvClient.get(key);
+                kvClient.get(key);
+                kvClient.get(key);
+                kvClient.get(key);
+                kvClient.get(key);
+                getOutput = kvClient.recvMessage.getValue();
             } catch (Exception e) {
                 System.out.println("Performance test error!");
             }
@@ -213,60 +219,6 @@ public class ECSPerformanceTest extends TestCase {
 
         System.out.println("Perf (0% put & 100% get)    = " + perf + " KB/s");
         System.out.println("Latency (0% put & 100% get) = " + latency + " ms");
-    }
-
-
-//------------------------------------compare between different payload (same iteration)----------------------------------------//
-
-    @Test
-    public void testPerf_put_16_() {
-        int iteration = 1000;
-        int numBytes = 16;
-        long startTime = System.currentTimeMillis();
-        for (int i = 0; i < iteration; i++) {
-            try {
-                kvClient.put(key, data_16_str);
-            } catch (Exception e) {
-                System.out.println("Performance test error!");
-            }
-        }
-
-        long duration = System.currentTimeMillis() - startTime;
-
-        double totalBytes = iteration * (numBytes);
-        double perf = 1000.0 * totalBytes / (1024 * duration);
-        double latency = 1000 * duration / (iteration * 1);
-
-        System.out.println("Perf (put payload 16)    = " + perf + " KB/s");
-        System.out.println("Latency (put payload 16) = " + latency + " ms");
-    }
-
-    @Test
-    public void testPerf_get_16_() {
-        int iteration = 1000;
-        int numBytes = 16;
-        try {
-            kvClient.put(key, data_16_str);
-        } catch (Exception e) {
-            System.out.println("Performance test error!");
-        }
-        long startTime = System.currentTimeMillis();
-        for (int i = 0; i < iteration; i++) {
-            try {
-                kvClient.get(key).getValue();
-            } catch (Exception e) {
-                System.out.println("Performance test error!");
-            }
-        }
-
-        long duration = System.currentTimeMillis() - startTime;
-
-        double totalBytes = iteration * (numBytes);
-        double perf = 1000.0 * totalBytes / (1024 * duration);
-        double latency = 1000 * duration / (iteration * 1);
-
-        System.out.println("Perf (get payload 16)    = " + perf + " KB/s");
-        System.out.println("Latency (get payload 16) = " + latency + " ms");
     }
 
 }

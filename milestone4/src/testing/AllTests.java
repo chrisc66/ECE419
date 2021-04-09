@@ -31,8 +31,9 @@ public class AllTests {
 		clientSuite.addTestSuite(ECSConsistentHashRingTest.class);	// ecs consistent hash ring functionality
 		clientSuite.addTestSuite(ECSCornerCasesTest.class);			// ecs consistent hash ring corner cases
 
-		// M4: Distributed Storage Server Tests (Strict Consistency Model)
-		clientSuite.addTestSuite(StrictConsistencyTest.class);			// distributed system strict consistency rules
+		// M4: Distributed Storage Server Tests (Sequencial Consistency & Data Subscription)
+		clientSuite.addTestSuite(StrictConsistencyTest.class);		// distributed system stricter consistency rules
+		clientSuite.addTestSuite(DataSubscriptionTest.class);		// distributed system data subscription rules
 
 		// Perf: Commenting out performance test to save some time when running tests 
 		// clientSuite.addTestSuite(PerformanceTest.class);			// performance tests for non-distributed service

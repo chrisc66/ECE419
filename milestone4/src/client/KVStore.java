@@ -6,26 +6,38 @@ import shared.messages.KVMessage;
 import shared.messages.KVMessageClass;
 import shared.messages.Metadata;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class KVStore implements KVCommInterface, Runnable {
 	
+	/* M1: non-distributed storage service */
 	private static Logger logger = Logger.getRootLogger();
 	private Socket clientSocket;
 	private KVCommunicationClient kvCommunication;
 	private String serverAddress;
 	private int serverPort;
-//	private MessageDigest md;//getInstance(String algorithm)
+	private static final String PROMPT = "Client> ";
+
+	/* M2, M3: distributed storage service */
 	private List<Metadata> metadata;
-	private int total_clients;		// only used for unit testing
-	private int clientID;			// only used for unit testing
-	private boolean testSuccess;	// only used for unit testing
+	
+	/* M4: Data subscription mechanism */
+	private Thread clientListenerThread;
+	private List<String> subscribtionList;
+	private boolean subscribingAll;
+	
+	/* Unit testing variables */
+	private int total_clients;				// total number of clients
+	private int clientID;					// cliend identifier within all clients
+	private boolean testSuccess;			// flag for test success
+	public volatile KVMessage recvMessage; 	// record last received message
+	public volatile boolean newMessage; 	// flag for unread new message 
 
 	/**
 	 * Initialize KVStore with KVServer address and port.
@@ -39,6 +51,10 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.total_clients = -1;
 		this.clientID = -1;
 		this.testSuccess = true;
+		this.subscribtionList = new ArrayList<>();
+		this.subscribingAll = false;
+		this.recvMessage = null;
+		this.newMessage = false;
 	}
 
 	/**
@@ -55,13 +71,19 @@ public class KVStore implements KVCommInterface, Runnable {
 		this.total_clients = total_clients;
 		this.clientID = clientID;
 		this.testSuccess = true;
+		this.subscribtionList = new ArrayList<>();
+		this.subscribingAll = false;
+		this.recvMessage = null;
+		this.newMessage = false;
 	}
 
 	@Override
 	public void connect() throws Exception {
 		try {
 			clientSocket = new Socket(serverAddress, serverPort);
-			kvCommunication = new KVCommunicationClient(clientSocket);
+			kvCommunication = new KVCommunicationClient(clientSocket, this);
+			clientListenerThread = new Thread(kvCommunication);
+			clientListenerThread.start();
 			System.out.println("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 			logger.info("Connection is established! Server address = "+ serverAddress +", port = "+serverPort);
 		}
@@ -85,7 +107,7 @@ public class KVStore implements KVCommInterface, Runnable {
 			try {
 				KVMessageClass kvmessage = new KVMessageClass(KVMessage.StatusType.DISCONNECT, "", "");
 				kvCommunication.send(kvmessage);
-				kvCommunication.receive();
+				// kvCommunication.receive();
 				kvCommunication.close();
 				logger.debug("Disconnected from server.");
 			}
@@ -105,8 +127,7 @@ public class KVStore implements KVCommInterface, Runnable {
 	@Override
 	public KVMessage get(String key) throws Exception {
 		KVMessageClass kvmessage = new KVMessageClass(KVMessage.StatusType.GET, key, "");
-		KVMessage ret = sendKVmessage (kvmessage, key);
-		return ret;
+		return sendKVmessage (kvmessage, key);
 	}
 
 	public boolean isRunning() {
@@ -165,9 +186,9 @@ public class KVStore implements KVCommInterface, Runnable {
 
 	public void updateServer (KVMessage msg, String key) throws NoSuchAlgorithmException, Exception {
 		metadata = msg.getMetadata();
-		// for (Metadata m : metadata){
-		// 	logger.info("Printing updated metadata: " + m.serverAddress + " " + m.port + " " + m.start + " " + m.stop);
-		// }
+		for (Metadata m : metadata){
+			logger.info("Printing updated metadata: " + m.serverAddress + " " + m.port + " " + m.start + " " + m.stop);
+		}
 		BigInteger key_bi = mdKey(key);
 		for (int i = 0; i < metadata.size(); i++ ) {
 			Metadata obj = metadata.get(i);
@@ -182,6 +203,7 @@ public class KVStore implements KVCommInterface, Runnable {
 				int lastServerPort = serverPort;
 				serverAddress = obj.serverAddress;
 				serverPort = obj.port;
+				logger.info("Connecting to another server, " + serverAddress + ":" + serverPort);
 				try {
 					connect();
 				} catch (Exception e) {
@@ -207,34 +229,39 @@ public class KVStore implements KVCommInterface, Runnable {
 		// System.out.println(kvmessage.toString());
 		// System.out.println("=========================================");
 		
-		kvCommunication.send(kvmessage);
+		// kvCommunication.send(kvmessage);
 		KVMessage msg = null;
+		newMessage = false;
 
-		try {
-			msg = kvCommunication.receive();
-		}
-		catch (IOException e){
-			msg = reconnectAndReceive(kvmessage, 0);
-		}
+		kvCommunication.send(kvmessage);
+		while (!newMessage){}
+
+		// try {
+		// 	// msg = kvCommunication.receive();
+		// 	kvCommunication.send(kvmessage);
+		// }
+		// catch (IOException e){
+		// 	// msg = reconnectAndReceive(kvmessage, 0);
+		// }
 		
-		// System.out.println("=========================================");
-		// System.out.println("KVClient receive KVMessage");
-		// System.out.println(msg.toString());
-		// System.out.println("=========================================");
+		// // System.out.println("=========================================");
+		// // System.out.println("KVClient receive KVMessage");
+		// // System.out.println(msg.toString());
+		// // System.out.println("=========================================");
 
-		if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
-			updateServer(msg, key);
-			// System.out.println("=========================================");
-			// System.out.println("SERVER_NOT_RESPONSIBLE: KVClient send KVMessage");
-			// System.out.println(kvmessage.toString());
-			// System.out.println("=========================================");
-			kvCommunication.send(kvmessage);
-			msg = kvCommunication.receive();
-			// System.out.println("=========================================");
-			// System.out.println("KVClient receive KVMessage");
-			// System.out.println(msg.toString());
-			// System.out.println("=========================================");
-		}
+		// if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
+		// 	updateServer(msg, key);
+		// 	// System.out.println("=========================================");
+		// 	// System.out.println("SERVER_NOT_RESPONSIBLE: KVClient send KVMessage");
+		// 	// System.out.println(kvmessage.toString());
+		// 	// System.out.println("=========================================");
+		// 	kvCommunication.send(kvmessage);
+		// 	msg = kvCommunication.receive();
+		// 	// System.out.println("=========================================");
+		// 	// System.out.println("KVClient receive KVMessage");
+		// 	// System.out.println(msg.toString());
+		// 	// System.out.println("=========================================");
+		// }
 
 		return msg;
 	}
@@ -253,23 +280,50 @@ public class KVStore implements KVCommInterface, Runnable {
 		
 		System.out.println("Cannot find server. Reconnecting ... ");
 		logger.info("Cannot find server. Reconnecting ... ");
-		if (metadata == null || i >= metadata.size())
+		if (metadata == null || i >= metadata.size()){
+			logger.error("Cannot find avaliable server to connect");
+			System.out.print(PROMPT);
 			throw new Exception("Cannot find avaliable server to connect");
+		}
 
 		KVMessage recvMsg = null;
 		this.serverAddress = metadata.get(i).serverAddress;
 		this.serverPort = metadata.get(i).port;
 
+		disconnect();
 		try {
 			connect();
-			kvCommunication.send(sendMsg);
-			recvMsg = kvCommunication.receive();
+			// kvCommunication.send(sendMsg);
 		}
 		catch (Exception e){
 			recvMsg = reconnectAndReceive(sendMsg, i + 1);
 		}
 		
 		return recvMsg;
+	}
+
+	public void subscribe(boolean all){
+		subscribingAll = true;
+	}
+
+	public void subscribe(String key){
+		subscribtionList.add(key);
+	}
+	
+	public void unsubscribe(boolean all){
+		subscribingAll = false;
+		subscribtionList.clear();
+	}
+
+	public void unsubscribe(String key){
+		subscribtionList.remove(key);
+	}
+
+	public boolean subscribed(String key){
+		if (subscribingAll){
+			return true;
+		}
+		return subscribtionList.contains(key);
 	}
 
 }

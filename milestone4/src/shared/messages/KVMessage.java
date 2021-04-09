@@ -39,13 +39,8 @@ public interface KVMessage {
 		SERVER_STOPPED, 			/* 11 Server is stopped, no requests are processed */
 		SERVER_WRITE_LOCK, 			/* 12 Server locked for write, only get possible */
 		SERVER_NOT_RESPONSIBLE, 	/* 13 Request not successful, server is not responsible for key */
-		// /* M2: Disk persistent storage data transfer betwen distributed KVServers */
-		// DATA_TRANSFER_START,		/* 14 Start of data transfer */
-		// DATA_TRANSFER_START_ACK,	/* 15 Start of data transfer acknowledgement */
-		// DATA_TRANSFER_CONTENT,		/* 16 Transfering data */
-		// DATA_TRANSFER_CONTENT_ACK,	/* 17 Transfering data acknowledgement */
-		// DATA_TRANSFER_STOP,			/* 18 End of data transfer */
-		// DATA_TRANSFER_STOP_ACK		/* 19 End of data transfer acknowledgement */
+		/* M4: Data Subscription Mechanism */
+		SUBSCRITION_UPDATE			/* 14 Server boardcast subscription update to clients */
 	}
 
 	/**
@@ -131,6 +126,12 @@ public interface KVMessage {
     //  * @return String of returned element
     //  */
 	// public String extractElement(String msg, int targetElementIdx);
+
+	/**
+	 * To string
+	 * @return
+	 */
+	public String toString();
 }
 
 

@@ -1,9 +1,12 @@
 package shared.communication;
 
 import org.apache.log4j.Logger;
+
+import client.KVStore;
 import shared.messages.KVMessage;
 import shared.messages.KVMessage.StatusType;
 import shared.messages.KVMessageClass;
+import shared.messages.KVAdminMessage.KVAdminType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,10 +18,14 @@ import java.net.Socket;
  * Client side implementation includes KVMessage handling, sending
  * and receiving at the client application. 
  */
-public class KVCommunicationClient implements IKVCommunication {
+public class KVCommunicationClient implements IKVCommunication, Runnable {
     
     private static Logger logger = Logger.getRootLogger();
     private static final int BUFFER_SIZE = 1024;
+    private static final String PROMPT = "Client> ";
+
+    private KVStore kvStore;
+    private KVMessage lastSentMessage;
 
     private Socket clientSocket;
     private boolean open;
@@ -26,7 +33,8 @@ public class KVCommunicationClient implements IKVCommunication {
     private InputStream input;
     private OutputStream output;
 
-    public KVCommunicationClient(Socket clientSocket) {
+    public KVCommunicationClient(Socket clientSocket, KVStore kvStore) {
+        this.kvStore = kvStore;
         this.clientSocket = clientSocket;
         this.open = true;
         try {
@@ -44,6 +52,9 @@ public class KVCommunicationClient implements IKVCommunication {
     }
 
     public void send(KVMessage message) throws IOException {
+        if (message.getStatus() == KVMessage.StatusType.PUT || message.getStatus() == KVMessage.StatusType.GET){
+            lastSentMessage = message;
+        }
         byte[] messageBytes = message.getMessageBytes();
 		output.write(messageBytes, 0, messageBytes.length);
 		output.flush();
@@ -140,6 +151,94 @@ public class KVCommunicationClient implements IKVCommunication {
         catch (IOException e) {
             logger.error("Unable to close connection.", e);
         }
+    }
+
+    @Override
+    public void run() {
+        while (open){
+            try {
+                // receive and update variables
+                KVMessage recvMsg = receive();
+                kvStore.recvMessage = recvMsg;
+                // do not update flag if message is invisible to user
+                if (recvMsg.getStatus() != KVMessage.StatusType.SERVER_NOT_RESPONSIBLE && recvMsg.getStatus() != KVMessage.StatusType.SUBSCRITION_UPDATE)
+                    kvStore.newMessage = true;
+                
+                logger.info(recvMsg.toString());
+                switch (recvMsg.getStatus()){
+                    case PUT_SUCCESS:
+                        logger.info(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case PUT_UPDATE:
+                        logger.info(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case PUT_ERROR:
+                        printError("Received message: " + recvMsg.getStatusString());
+                        logger.error(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case GET_SUCCESS:
+                        System.out.println("Data: key = " + recvMsg.getKey() + ", value = " + recvMsg.getValue());
+                        logger.info(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case GET_ERROR:
+                        printError("Received message: " + recvMsg.getStatusString());
+                        logger.error(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case DELETE_SUCCESS:
+                        logger.info(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case DELETE_ERROR:
+                        printError("Received message: " + recvMsg.getStatusString());
+                        logger.error(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case DISCONNECT:
+                        open = false;
+                        kvStore.reconnectAndReceive(lastSentMessage, 0);
+                        System.out.print(PROMPT);
+                        return;
+                    case SERVER_STOPPED:
+                        printError("Received message: " + recvMsg.getStatusString());
+                        logger.error(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case SERVER_WRITE_LOCK:
+                        printError("Received message: " + recvMsg.getStatusString());
+                        logger.error(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                        break;
+                    case SERVER_NOT_RESPONSIBLE:
+                        kvStore.updateServer(recvMsg, lastSentMessage.getKey());
+                        kvStore.sendKVmessage(lastSentMessage, lastSentMessage.getKey());
+                        break;
+                    case SUBSCRITION_UPDATE:
+                        if (kvStore.subscribed(recvMsg.getKey())){
+                            System.out.println("Received message: " + recvMsg.getStatusString());
+                            System.out.println("Data Update: key = " + recvMsg.getKey() + ", value = " + recvMsg.getValue());
+                            System.out.print(PROMPT);
+                        }
+                        break;
+                    default:
+                        printError("Received message: " + recvMsg.getStatusString());
+                        logger.error(recvMsg.getStatusString());
+                        System.out.print(PROMPT);
+                }
+            }
+            catch (Exception e){
+                if (open)
+                    printError("Exception occured, closing server connection.");
+            }
+        }
+    }
+
+    private void printError(String error){
+        System.out.println("Error! " +  error);
     }
 
 }

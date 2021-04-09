@@ -5,7 +5,6 @@ import client.KVStore;
 import logger.LogSetup;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import shared.messages.KVMessage;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,9 +39,9 @@ public class KVClient implements IKVClient {
     }
 
     public void run() throws Exception{
+        System.out.print(PROMPT);
         while(!stop) {
             stdin = new BufferedReader(new InputStreamReader(System.in));
-            System.out.print(PROMPT);
 
             try {
                 String cmdLine = stdin.readLine();
@@ -85,6 +84,7 @@ public class KVClient implements IKVClient {
                     printError("Could not establish connection!");
                     logger.error("Could not establish connection!", e);
                 }
+                System.out.print(PROMPT);
             } 
             else {
                 printError("Invalid number of parameters!");
@@ -102,15 +102,8 @@ public class KVClient implements IKVClient {
                             value.append(" ");
                         }
                     }
-                    KVMessage msg = kvStore.put(key, value.toString());
+                    kvStore.put(key, value.toString());
                     logger.info("Sending PUT message, " + "Key: " + key + ", Value: " + value.toString());
-                    if (msg.getStatus() == KVMessage.StatusType.GET_ERROR || 
-                        msg.getStatus() == KVMessage.StatusType.PUT_ERROR ||
-                        msg.getStatus() == KVMessage.StatusType.DELETE_ERROR ||
-                        msg.getStatus() == KVMessage.StatusType.SERVER_STOPPED){
-                        printError("Received message: " + msg.getStatusString());
-                        logger.error(msg.getStatusString());
-                    }
                 } 
                 else {
                     printError("Not connected to server!");
@@ -126,14 +119,7 @@ public class KVClient implements IKVClient {
             if(tokens.length >= 2) {
                 if(kvStore != null && kvStore.isRunning()){
                     String key = tokens[1];
-                    KVMessage msg = kvStore.get(key);
-                    if (msg.getStatus() != KVMessage.StatusType.GET_SUCCESS) {
-                        printError("Received message: " + msg.getStatusString());
-                        logger.error(msg.getStatusString());
-                    } else {
-                        printOutput("Key: " + msg.getKey() + ", Value: " + msg.getValue());
-                        logger.info("Sending GET message, " + "Key: " + msg.getKey() + ", Value: " + msg.getValue());
-                    }
+                    kvStore.get(key);
                 }
                 else {
                     printError("Not connected to server!");
@@ -145,6 +131,46 @@ public class KVClient implements IKVClient {
                 logger.error("No message passed to server!");
             }
         } 
+        else if(tokens[0].equals("subscribe")) {
+            if(tokens.length >= 2) {
+                if(kvStore != null && kvStore.isRunning()){
+                    if (tokens[1].equals("all")){
+                        kvStore.subscribe(true);
+                    }
+                    else {
+                        for (int i = 1; i < tokens.length; i++){
+                            String key = tokens[i];
+                            kvStore.subscribe(key);
+                        }
+                    }
+                }
+                else {
+                    printError("Not connected to server!");
+                    logger.error("Not connected to server!");
+                }
+            }
+            System.out.print(PROMPT);
+        }
+        else if(tokens[0].equals("unsubscribe")) {
+            if(tokens.length >= 2) {
+                if(kvStore != null && kvStore.isRunning()){
+                    if (tokens[1].equals("all")){
+                        kvStore.unsubscribe(true);
+                    }
+                    else {
+                        for (int i = 1; i < tokens.length; i++){
+                            String key = tokens[i];
+                            kvStore.unsubscribe(key);
+                        }
+                    }
+                }
+                else {
+                    printError("Not connected to server!");
+                    logger.error("Not connected to server!");
+                }
+            }
+            System.out.print(PROMPT);
+        }
         else if(tokens[0].equals("disconnect")) {
             if(kvStore != null){
                 kvStore.disconnect();
@@ -167,24 +193,22 @@ public class KVClient implements IKVClient {
                 printError("Invalid number of parameters!");
                 logger.error("Invalid number of parameters!");
             }
-
+            System.out.print(PROMPT);
         } 
         else if(tokens[0].equals("help")) {
             printHelp();
             logger.info("Printing help to stdout.");
+            System.out.print(PROMPT);
         } 
         else {
             printError("Unknown command, see help");
             logger.error("Unknown command: " + tokens[0]);
+            System.out.print(PROMPT);
         }
     }
 
     private void printError(String error){
         System.out.println("Error! " +  error);
-    }
-
-    private void printOutput(String out){
-        System.out.println(out);
     }
 
     private void printPossibleLogLevels() {
@@ -236,6 +260,7 @@ public class KVClient implements IKVClient {
         System.out.println("    loglevel <level>");
         System.out.println("    put <key> <value>");
         System.out.println("    get <key>");
+        System.out.println("    subscribe <key> | all");
     }
 
     public static void main(String[] args) throws Exception{

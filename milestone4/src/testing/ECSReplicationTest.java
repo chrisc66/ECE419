@@ -70,11 +70,20 @@ public class ECSReplicationTest extends TestCase {
         KVMessage response5 = null;
 
         try {
-            response1 = kvClient.put("a", "a");
-            response2 = kvClient.put("b", "b");
-            response3 = kvClient.put("c", "c");
-            response4 = kvClient.put("d", "d");
-            response5 = kvClient.put("e", "e");
+            kvClient.put("a", "a");
+			response1 = kvClient.recvMessage;
+
+            kvClient.put("b", "b");
+			response2 = kvClient.recvMessage;
+
+            kvClient.put("c", "c");
+			response3 = kvClient.recvMessage;
+
+            kvClient.put("d", "d");
+			response4 = kvClient.recvMessage;
+
+            kvClient.put("e", "e");
+			response5 = kvClient.recvMessage;
         } catch (Exception e) {
             ex = e;
         }
@@ -114,11 +123,20 @@ public class ECSReplicationTest extends TestCase {
         }
 
         try {
-            response1 = kvClient.get("a");
-            response2 = kvClient.get("b");
-            response3 = kvClient.get("c");
-            response4 = kvClient.get("d");
-            response5 = kvClient.get("e");
+            kvClient.get("a");
+			response1 = kvClient.recvMessage;
+
+            kvClient.get("b");
+			response2 = kvClient.recvMessage;
+
+            kvClient.get("c");
+			response3 = kvClient.recvMessage;
+
+            kvClient.get("d");
+			response4 = kvClient.recvMessage;
+
+            kvClient.get("e");
+			response5 = kvClient.recvMessage;
         } catch (Exception e) {
             ex = e;
         }
@@ -158,11 +176,20 @@ public class ECSReplicationTest extends TestCase {
         }
         
         try {
-            response1 = kvClient.put("a", "");
-            response2 = kvClient.put("b", "");
-            response3 = kvClient.put("c", "");
-            response4 = kvClient.put("d", "");
-            response5 = kvClient.put("e", "");
+            kvClient.put("a", "");
+			response1 = kvClient.recvMessage;
+
+            kvClient.put("b", "");
+			response2 = kvClient.recvMessage;
+
+            kvClient.put("c", "");
+			response3 = kvClient.recvMessage;
+
+            kvClient.put("d", "");
+			response4 = kvClient.recvMessage;
+
+            kvClient.put("e", "");
+			response5 = kvClient.recvMessage;
         } catch (Exception e) {
             ex = e;
         }
@@ -202,11 +229,20 @@ public class ECSReplicationTest extends TestCase {
         }
 
         try {
-            response1 = kvClient.get("a");
-            response2 = kvClient.get("b");
-            response3 = kvClient.get("c");
-            response4 = kvClient.get("d");
-            response5 = kvClient.get("e");
+            kvClient.get("a");
+			response1 = kvClient.recvMessage;
+
+            kvClient.get("b");
+			response2 = kvClient.recvMessage;
+
+            kvClient.get("c");
+			response3 = kvClient.recvMessage;
+
+            kvClient.get("d");
+			response4 = kvClient.recvMessage;
+
+            kvClient.get("e");
+			response5 = kvClient.recvMessage;
         } catch (Exception e) {
             ex = e;
         }

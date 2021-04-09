@@ -34,8 +34,10 @@ public class InteractionTest extends TestCase {
 
 	@After
 	public void tearDown(){
-		// kvClient.disconnect();
-		// kvServer.close();
+		kvClient.disconnect();
+		kvServer.clearCache();
+		kvServer.clearStorage();
+		kvServer.close();
 	}
 
 	@Test
@@ -48,7 +50,8 @@ public class InteractionTest extends TestCase {
 		KVMessage response = null;
 
 		try {
-			response = kvClient.put(key, value);
+			kvClient.put(key, value);
+			response = kvClient.recvMessage;
 		} catch (Exception e) {
 			ex = e;
 		}
@@ -90,7 +93,8 @@ public class InteractionTest extends TestCase {
 
 		try {
 			kvClient.put(key, initialValue);
-			response = kvClient.put(key, updatedValue);
+			kvClient.put(key, updatedValue);
+			response = kvClient.recvMessage;
 		} catch (Exception e) {
 			ex = e;
 		}
@@ -112,7 +116,8 @@ public class InteractionTest extends TestCase {
 
 		try {
 			kvClient.put(key, value);
-			response = kvClient.put(key, "");
+			kvClient.put(key, "");
+			response = kvClient.recvMessage;
 		} catch (Exception e) {
 			ex = e;
 		}
@@ -132,7 +137,8 @@ public class InteractionTest extends TestCase {
 
 		try {
 			kvClient.put(key, value);
-			response = kvClient.get(key);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 		} catch (Exception e) {
 			ex = e;
 		}
@@ -151,7 +157,8 @@ public class InteractionTest extends TestCase {
 		KVMessage response = null;
 
 		try {
-			response = kvClient.get(key);
+			kvClient.get(key);
+			response = kvClient.recvMessage;
 		} catch (Exception e) {
 			ex = e;
 		}
