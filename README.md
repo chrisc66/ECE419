@@ -46,7 +46,9 @@ The list of possible commands for KVClient are:
 - `put <key> <value>`: insert `<key, value>` pair into database
 - `put <key>`: delete `<key>` from database (empty `<value>`)
 - `get <key>`: query `<key>` from database
-- `loglevel <level>`: change logger level to one of ALL, INFO, DEBUG, or ERROR
+- `subscribe <key1> <key2> <...> | all` turn on data subscription for keys or all keys
+- `subscribe <key1> <key2> <...> | all` turn off data subscription for keys or all keys
+- `loglevel <level>`: change logger level to one of `ALL`, `INFO`, `DEBUG`, or `ERROR`
 - `quit`: quit application
 - `help`: show help
 
@@ -66,7 +68,7 @@ The list of possible commands for ECS Client are:
 - `shutdown`: shutdown and stop all servers 
 - `status | serverstatus`: show status of all servers
 - `hashring | hashringstatus`: show status of current consistent hash ring
-- `loglevel <level>`: change logger level to one of ALL, INFO, or ERROR
+- `loglevel <level>`: change logger level to one of `ALL`, `INFO`, or `ERROR`
 - `quit`: quit application
 - `help`: show help
 
@@ -143,30 +145,38 @@ This milestone builds on top of milestone 1 and 2 and extends the functionality 
 
 ### Milestone 4
 
-This milestone is an open ended improvement to the key-value store service and it builds on top of all previous milestones. This milestone implements a strict consistency model and data subscription protocol.
+This milestone is an open ended improvement to the key-value store service and it builds on top of all previous milestones. This milestone implements a sequential consistency model and data subscription mechanism.
 
 #### Change Log
 
-- Strict consistency model such that KVServer only responds to `PUT` messages after replicas finish updating the key-value pair (`KVServer`, `KVCommunicationServer`, `KVAdminMessage`).
-- Data subscription protocol
-- Junit tests for newly added functionalities (`StrictConsistencyTest`).
-- Todo
+- Stricter data-centric consistency with sequential model such that KVServer only responds to `PUT` messages after replicas finish updating the key-value pair (`KVServer`, `KVCommunicationServer`, `KVAdminMessage`).
+- Additional KVMessage type `SUBSCRIPTION_UPDATE`. When client `PUT` a key-value pair, responsible server forwards the update to all peer servers, and then each server boardcasts message to all connected clients (`KVMessage`, `KVMessageClass`, `KVCommunicationServer`, `KVServer`, `KVCommunicationClient`).
+- Multi-threaded KVClient implementation for data subscription mechanism. One sender thread that sends requests upon user command, one listener thread that constantly listens to server messages, including data subscription update. (`KVClient`, `KVStore`, `KVCommunicationClient`). 
+- Modified KVClient command line interface, two commands are added, `subscribe` and `unsubscribe` (`KVClient`, `KVStore`). 
+- Bug fix for imtermittent test failures, KVServer delete zNode during graceful shutdown (`KVServer`). 
+- Junit tests for newly added functionalities (`StrictConsistencyTest`, `DataSubscriptionTest`).
+- Updated previous unit tests to adapt `KVStore` API change.
 
 #### Design Document
 
-- [M4 Design Doc]() (Todo, update when avaliable)
+- [M4 Design Doc](https://docs.google.com/document/d/1PXZrNNJxUkVuipkByj4yJjFWdSzMxqJ_o99Vupzv-Qo/edit?usp=sharing)
 
 #### TODO Tasks / Known Issue
 
-- ZooKeeper zNodes could loss KVAdminMessage and we are not handling this case.
-- Possible bug under highly concurrent KVClient operations. 
-- Todo
+- Refactor and cleanup code base
+- Performance optimization
 
 ## Build and Run Instructions 
 
 ### Required Environment
 
-This project is developed and tested only on Java 11 with Apache Ant as building tool. This project requires [Apache ZooKeeper v3.4.11](https://zookeeper.apache.org/doc/r3.4.11/releasenotes.html) and assumes that a ZooKeeper server is running at runtime. 
+#### Java 11
+
+This project is developed and tested only on Java 11 with Apache Ant as building tool. 
+
+#### ZooKeeper
+
+This project requires [Apache ZooKeeper v3.4.11](https://zookeeper.apache.org/doc/r3.4.11/releasenotes.html), disregards that zookeeper `v3.6` is included in `libs` directory. The program always assumes that a ZooKeeper server is running at runtime. 
 
 You may find ZooKeeper package tgz file [here](./zookeeper-3.4.11.tar.gz). Unzip the package, move to project directory, and run ZooKeeper server in the background. Replace "`x`" with a milestone number, one of 2, 3, or 4.
 
@@ -175,6 +185,10 @@ tar -xf zookeeper-3.4.11.tar.gz
 cp zookeeper-3.4.11 milestonex/zookeeper-3.4.11
 ./zookeeper-3.4.11/bin/zkServer.sh start
 ```
+
+#### SSH Access
+
+The ECS program uses `ssh` to launch KVServer instances even if these programs runs on the same machine. Make sure that SSH keys are setup and port 22 is opened on your laptop.
 
 ### Build Instruction
 
@@ -204,11 +218,13 @@ ant build-jar
 
 - Run Storage Server (KVServer)
 
+    KVServer can be launched by ECS client in distributed mode, or launched by below command as non-distributed mode. 
+
     Replace "`x`" with a milestone number, one of 1, 2, 3, or 4. The KVServer program takes three arguments, port number that KVServer listens on, cache size (only support `0`, no cache), cache strategy (only support `NONE`, no cache).
     ``` bash 
     java -jar mx-server.jar <port> <cache_size> <cache_strategy>
     ```
-    This provides a KVServer command prompt, refer to previous guide or type `help` to see all avaliable commands. 
+    The KVServer program does not have a command prompt, it only listens to client requests (both modes) and ECS requests (distributed mode). 
 
 - Run Storage Client (KVClient)
 
