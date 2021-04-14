@@ -15,8 +15,7 @@ import org.junit.Test;
 public class ECSConsistentHashRingTest extends TestCase {
     
     // ECS Client
-    // private static final String configFilePath = System.getProperty("user.dir") + "/ecs.config";
-    private static final String configFilePath = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone4/ecs.config";
+    private static final String configFilePath = System.getProperty("user.dir") + "/ecs.config";
     private ECSClient ecsClient;
     // KVServer
     private static final int numKvServer = 1;

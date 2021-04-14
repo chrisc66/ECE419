@@ -36,8 +36,7 @@ public class ECSClient implements IECSClient{
     private static final String zkRootNodePath = "/StorageServerRoot";          // ZooKeeper path to root zNode
 	private static final String zkRootDataPathPrev = "/StorageServerDataPrev";	// ZooKeeper path to root zNode for data replication on previous node
 	private static final String zkRootDataPathNext = "/StorageServerDataNext";  // ZooKeeper path to root zNode for data replication on next node
-    // private static final String serverDir = System.getProperty("user.dir");
-    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone4";
+    private static final String serverDir = System.getProperty("user.dir");
     private static final String serverJar = "m4-server.jar";
     private static final int zkPort = 2181;
     private static final String zkHost = "localhost";
