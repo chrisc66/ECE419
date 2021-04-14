@@ -6,7 +6,6 @@ import client.KVStore;
 import shared.messages.KVMessage;
 import shared.messages.KVMessage.StatusType;
 import shared.messages.KVMessageClass;
-import shared.messages.KVAdminMessage.KVAdminType;
 
 import java.io.IOException;
 import java.io.InputStream;

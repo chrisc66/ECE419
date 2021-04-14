@@ -31,13 +31,13 @@ public class KVStore implements KVCommInterface, Runnable {
 	private Thread clientListenerThread;
 	private List<String> subscribtionList;
 	private boolean subscribingAll;
+	public volatile KVMessage recvMessage; 	// record last received message
+	public volatile boolean newMessage; 	// flag for unread new message
 	
 	/* Unit testing variables */
 	private int total_clients;				// total number of clients
 	private int clientID;					// cliend identifier within all clients
 	private boolean testSuccess;			// flag for test success
-	public volatile KVMessage recvMessage; 	// record last received message
-	public volatile boolean newMessage; 	// flag for unread new message 
 
 	/**
 	 * Initialize KVStore with KVServer address and port.
@@ -224,46 +224,14 @@ public class KVStore implements KVCommInterface, Runnable {
 
 	public KVMessage sendKVmessage (KVMessage kvmessage, String key) throws Exception {
 		
-		// System.out.println("=========================================");
-		// System.out.println("KVClient send KVMessage");
-		// System.out.println(kvmessage.toString());
-		// System.out.println("=========================================");
-		
-		// kvCommunication.send(kvmessage);
-		KVMessage msg = null;
+		newMessage = false;
+		kvCommunication.send(kvmessage);
+
+		// wait for new message before return (set by listener thread)
+		while (!newMessage){}
 		newMessage = false;
 
-		kvCommunication.send(kvmessage);
-		while (!newMessage){}
-
-		// try {
-		// 	// msg = kvCommunication.receive();
-		// 	kvCommunication.send(kvmessage);
-		// }
-		// catch (IOException e){
-		// 	// msg = reconnectAndReceive(kvmessage, 0);
-		// }
-		
-		// // System.out.println("=========================================");
-		// // System.out.println("KVClient receive KVMessage");
-		// // System.out.println(msg.toString());
-		// // System.out.println("=========================================");
-
-		// if (msg.getStatus() == KVMessage.StatusType.SERVER_NOT_RESPONSIBLE) {
-		// 	updateServer(msg, key);
-		// 	// System.out.println("=========================================");
-		// 	// System.out.println("SERVER_NOT_RESPONSIBLE: KVClient send KVMessage");
-		// 	// System.out.println(kvmessage.toString());
-		// 	// System.out.println("=========================================");
-		// 	kvCommunication.send(kvmessage);
-		// 	msg = kvCommunication.receive();
-		// 	// System.out.println("=========================================");
-		// 	// System.out.println("KVClient receive KVMessage");
-		// 	// System.out.println(msg.toString());
-		// 	// System.out.println("=========================================");
-		// }
-
-		return msg;
+		return recvMessage;
 	}
 
 
@@ -294,7 +262,6 @@ public class KVStore implements KVCommInterface, Runnable {
 		disconnect();
 		try {
 			connect();
-			// kvCommunication.send(sendMsg);
 		}
 		catch (Exception e){
 			recvMsg = reconnectAndReceive(sendMsg, i + 1);

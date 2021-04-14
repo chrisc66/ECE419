@@ -431,20 +431,17 @@ public class KVServer implements IKVServer, Runnable {
 	@Override
 	public void lockWrite(){ 
 		logger.info("KVServer acquiring write lock, rejecting client write requests.");
-		// writeLock ++; 
 		writeLock = true;
 	}
 
 	@Override
 	public void unlockWrite(){ 
 		logger.info("KVServer releasing write lock, accepting client write requests.");
-		// writeLock --; 
 		writeLock = false;
 	}
 
 	@Override
 	public boolean getWriteLock(){ 
-		// return (writeLock == 0); 
 		return writeLock;
 	}
 

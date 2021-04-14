@@ -28,7 +28,7 @@ public class ECSClient implements IECSClient{
     private ECSConsistantHashRing hashRingDB;
     private String sourceConfigPath;
     private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>(); // all servers in conf, string = ip:port
-    private ArrayList<String> curServers = new ArrayList<>();    // INUSE + IDLE servers
+    private ArrayList<String> curServers = new ArrayList<>();                   // INUSE + IDLE servers
     private Object ExceptionInInitializerError;
     private boolean stop = false;
     private BufferedReader stdin;

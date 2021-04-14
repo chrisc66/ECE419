@@ -190,9 +190,8 @@ public class DiskStorage implements DiskStorageInterface{
 	}
 
     public boolean keyWithinRange (BigInteger mdKey, BigInteger start, BigInteger stop){
-        // // mdKey >= start -> 0 or 1
-        // // mdKey < stop -> -1
-        // return (mdKey.compareTo(start) >= 0 && mdKey.compareTo(stop) < 0);
+        // mdKey >= start -> 0 or 1
+        // mdKey < stop -> -1
         // START <= STOP && key > START && key < STOP
         // START >= STOP && key > START && key > STOP
         // START >= STOP && key < START && key < STOP

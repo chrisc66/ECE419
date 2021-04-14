@@ -310,15 +310,7 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         while (open) {
             try {
                 KVMessage recvMsg = receive();          // listening / waiting on receive()
-                // System.out.println("=========================================");
-                // System.out.println("KVServer receive KVMessage");
-                // System.out.println(recvMsg.toString());
-                // System.out.println("=========================================");
                 KVMessage sendMsg = process(recvMsg);
-                // System.out.println("=========================================");
-                // System.out.println("KVServer send KVMessage");
-                // System.out.println(sendMsg.toString());
-                // System.out.println("=========================================");
                 send(sendMsg);
             }
             catch (IOException e) {
@@ -389,7 +381,6 @@ public class KVCommunicationServer implements IKVCommunication, Runnable {
         Iterator<Map.Entry<String, Metadata>> it = metadataMap.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, Metadata> entry = it.next();
-            // String key = (String) entry.getKey(); 
 			Metadata metadata = (Metadata) entry.getValue();
             JSONObject obj = new JSONObject();
             obj.put("serverAddress", metadata.serverAddress);
