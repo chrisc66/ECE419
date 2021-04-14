@@ -28,7 +28,7 @@ public class ECSClient implements IECSClient{
     private ECSConsistantHashRing hashRingDB;
     private String sourceConfigPath;
     private HashMap<String, IECSNode.STATUS> serverStatusMap = new HashMap<>(); // all servers in conf, string = ip:port
-    private ArrayList<String> curServers = new ArrayList<>();    // INUSE + IDLE servers
+    private ArrayList<String> curServers = new ArrayList<>();                   // INUSE + IDLE servers
     private Object ExceptionInInitializerError;
     private boolean stop = false;
     private BufferedReader stdin;
@@ -36,8 +36,7 @@ public class ECSClient implements IECSClient{
     private static final String zkRootNodePath = "/StorageServerRoot";          // ZooKeeper path to root zNode
 	private static final String zkRootDataPathPrev = "/StorageServerDataPrev";	// ZooKeeper path to root zNode for data replication on previous node
 	private static final String zkRootDataPathNext = "/StorageServerDataNext";  // ZooKeeper path to root zNode for data replication on next node
-    // private static final String serverDir = System.getProperty("user.dir");
-    private static final String serverDir = "/Users/Zichun.Chong@ibm.com/Desktop/ece419/project/milestone4";
+    private static final String serverDir = System.getProperty("user.dir");
     private static final String serverJar = "m4-server.jar";
     private static final int zkPort = 2181;
     private static final String zkHost = "localhost";

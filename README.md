@@ -186,6 +186,10 @@ cp zookeeper-3.4.11 milestonex/zookeeper-3.4.11
 ./zookeeper-3.4.11/bin/zkServer.sh start
 ```
 
+#### Working Directory Path
+
+The ECS program uses a variable `serverDir` to store current working directory and launch KVServer instances. The defaul value is set to `System.getProperty("user.dir")`. This could be incorrect on MacOS. You can select to hard code this value to the absolute path of your working directory (location of `mx-ecs.jar`).
+
 #### SSH Access
 
 The ECS program uses `ssh` to launch KVServer instances even if these programs runs on the same machine. Make sure that SSH keys are setup and port 22 is opened on your laptop.

@@ -42,7 +42,6 @@ public class KVClient implements IKVClient {
         System.out.print(PROMPT);
         while(!stop) {
             stdin = new BufferedReader(new InputStreamReader(System.in));
-
             try {
                 String cmdLine = stdin.readLine();
                 this.handleCommand(cmdLine);
